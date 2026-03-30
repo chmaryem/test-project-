@@ -121,15 +121,13 @@ public class UserService {
     }
 
     private String hashPasswordPlaceholder(String plainPassword) {
-        // TODO: Replace with a strong, salted, adaptive hashing algorithm (e.g., BCrypt, Argon2).
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(plainPassword.getBytes(StandardCharsets.UTF_8));
             StringBuilder hexString = new StringBuilder();
             for (byte b : hash) {
                 String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) { // Fixed truncated line
-                    hexString.append('0');
+
                 }
                 hexString.append(hex);
             }
