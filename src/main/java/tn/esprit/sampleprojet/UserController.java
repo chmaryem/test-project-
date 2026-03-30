@@ -9,11 +9,7 @@ import java.util.Objects;
 @Controller
 public class UserController {
 
-    private final UserService userService;
 
-    public UserController(UserService userService) {
-        this.userService = userService;
-    }
 
 
     public User login(String username, String password) {

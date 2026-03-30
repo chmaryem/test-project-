@@ -3,7 +3,7 @@ package tn.esprit.sampleprojet;
 import tn.esprit.sampleprojet.User;
 
 import javax.sql.DataSource;
-import java.sql.Connection; // Added import for Connection
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -18,18 +18,11 @@ public class UserRepository {
     public UserRepository(DataSource dataSource) {
         this.dataSource = dataSource;
     }
-
-    // Helper method for password hashing (placeholder - replace with a robust library like BCrypt)
     private String hashPassword(String plainPassword) {
-        // TODO: Implement proper password hashing using a secure library (e.g., BCrypt, Argon2).
-        // This is a placeholder and should NOT be used in production.
         return "hashed_" + plainPassword; // Example placeholder
     }
 
     public User findById(int id) throws SQLException {
-        // PROBLEM 4: Resources not closed in finally block (fixed by try-with-resources)
-        // PROBLEM 5: SQL injection (fixed by PreparedStatement)
-        // PROBLEM 6: Statement and ResultSet never closed - RESOURCE LEAK! (fixed by try-with-resources)
         String sql = "SELECT id, username, email FROM users WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -49,10 +42,7 @@ public class UserRepository {
 
     public List<User> findAll() throws SQLException {
         List<User> users = new ArrayList<>();
-        // PROBLEM 7: Partial try-with-resources (incomplete) (fixed by full try-with-resources)
-        // PROBLEM 8: ResultSet not in try-with-resources! (fixed by full try-with-resources)
-        // PROBLEM 9: rs not closed here - LEAK! (fixed by full try-with-resources)
-        String sql = "SELECT id, username, email FROM users"; // Added email to select for consistency
+        String sql = "SELECT id, username, email FROM users";
         try (Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -61,19 +51,15 @@ public class UserRepository {
                 User user = new User();
                 user.id = rs.getInt("id");
                 user.username = rs.getString("username");
-                user.email = rs.getString("email"); // Assuming email is also retrieved
+                user.email = rs.getString("email");
                 users.add(user);
             }
         }
-        // TODO: Consider adding pagination for large datasets to prevent unbounded queries.
+
         return users;
     }
 
     public void save(User user) throws SQLException {
-        // PROBLEM 10: Connection leak on exception (fixed by try-with-resources)
-        // PROBLEM 11: Re-throwing without closing resources (fixed by try-with-resources)
-        // PROBLEM 12: If close() throws exception, it's lost (fixed by try-with-resources)
-        // SECURITY: Password stored as plain text (addressed with hashing placeholder)
         String sql = "INSERT INTO users (username, email, password) VALUES (?, ?, ?)";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
