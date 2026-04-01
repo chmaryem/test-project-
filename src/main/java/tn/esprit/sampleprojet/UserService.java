@@ -16,16 +16,7 @@ import java.util.logging.Logger; // Added for logging
 
 public class UserService {
 
-    private static final Logger LOGGER = Logger.getLogger(UserService.class.getName()); // Added logger
-    private DataSource dataSource;
 
-
-    public UserService(DataSource dataSource) {
-        if (dataSource == null) {
-            throw new IllegalArgumentException("DataSource cannot be null.");
-        }
-        this.dataSource = dataSource;
-    }
 
     public User findByUsername(String username) throws SQLException {
         String query = "SELECT id, username, email FROM users WHERE username = ?"; // Do not select password
@@ -127,7 +118,8 @@ public class UserService {
             StringBuilder hexString = new StringBuilder();
             for (byte b : hash) {
                 String hex = Integer.toHexString(0xff & b);
-
+                if (hex.length() == 1) { // Fixed truncated line
+                    hexString.append('0');
                 }
                 hexString.append(hex);
             }
