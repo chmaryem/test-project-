@@ -4,13 +4,21 @@ import org.springframework.stereotype.Controller;
 
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Objects;
+
+import org.springframework.beans.factory.annotation.Autowired; // Added for Spring DI
+import java.util.logging.Logger; // Added for logging
 
 @Controller
 public class UserController {
 
 
+  private static final Logger LOGGER = Logger.getLogger(UserController.class.getName()); // Declared logger
+  private final UserService userService;
 
+   @Autowired
+   public UserController(UserService userService) {
+            this.userService = userService;
+            }
 
     public User login(String username, String password) {
 
