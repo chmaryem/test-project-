@@ -2,11 +2,11 @@ package tn.esprit.sampleprojet;
 import java.util.Date;
 import java.util.List;
 import java.util.ArrayList;
-
+import jakarta.annotation.Nonnull;
 
 
 public class User {
-    private int id;
+    int id;
     String username;
     private String passwordHash;
     String email;
