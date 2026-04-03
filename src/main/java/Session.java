@@ -34,10 +34,7 @@ public class Session {
         return createdAt;
     }
 
-    // ❌ méthode dangereuse (simulation injection SQL)
-    public String buildQuery() {
-        return "SELECT * FROM users WHERE username = '" + username + "'";
-    }
+
 
     // ❌ log de données sensibles
     public void printDebug() {
