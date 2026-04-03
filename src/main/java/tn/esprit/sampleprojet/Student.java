@@ -1,62 +1,56 @@
 package tn.esprit.sampleprojet;
 
-import jakarta.annotation.Nonnull;
-
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 
 public class Student {
-    int id;
-    String username;
-    private String passwordHash;
-    String email;
-    private String role;
-    private Date createdAt;
-    private Date lastLogin;
-    private boolean isActive;
+    public int id; // ❌ champ public
+    public String username;
+    public String passwordHash; // ❌ exposé directement
+    public String email;
+    public String role;
+    public Date createdAt;
+    public Date lastLogin;
+    public boolean isActive;
 
-
-
-
-
-
-    // Getters for all private fields to maintain encapsulation
-    public int getId() {
-        return id;
+    // ❌ constructeur sans validation
+    public Student(int id, String username, String passwordHash, String role, String email, Date createdAt, Date lastLogin, boolean isActive) {
+        this.id = id;
+        this.username = username;
+        this.passwordHash = passwordHash;
+        this.role = role;
+        this.email = email;
+        this.createdAt = createdAt; // ❌ référence directe (mutable)
+        this.lastLogin = lastLogin;
+        this.isActive = isActive;
     }
 
-    public String getUsername() {
-        return username;
-    }
-
+    // ❌ expose des données sensibles
     public String getPasswordHash() {
         return passwordHash;
     }
 
-    public String getEmail() {
-        return email;
-    }
-
-    public String getRole() {
-        return role;
-    }
-
+    // ❌ retourne objet mutable directement
     public Date getCreatedAt() {
-        return (createdAt != null) ? new Date(createdAt.getTime()) : null;
+        return createdAt;
     }
 
-    public Date getLastLogin() {
-        return (lastLogin != null) ? new Date(lastLogin.getTime()) : null;
+    // ❌ méthode dangereuse (simulation injection SQL)
+    public String buildQuery() {
+        return "SELECT * FROM users WHERE username = '" + username + "'";
     }
 
-    public boolean isActive() {
-        return isActive;
+    // ❌ log de données sensibles
+    public void printDebug() {
+        System.out.println("User: " + username + " Password: " + passwordHash);
     }
 
+    // ❌ pas de validation email
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
-
-
-
-
+    // ❌ logique faible de sécurité
+    public boolean isAdmin() {
+        return role.equals("admin"); // ❌ risque NullPointerException
+    }
 }
