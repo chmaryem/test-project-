@@ -129,24 +129,9 @@ public class UserService {
 
     public List<User> getAllUsers() throws SQLException {
         List<User> users = new ArrayList<>();
-
-        // ARCHITECTURE: Unbounded query. For large datasets, this can lead to performance issues
-        // and out-of-memory errors. Pagination (using LIMIT/OFFSET) should be implemented.
-        // However, changing the method signature is not allowed by the current rules.
         String query = "SELECT id, username, email FROM users";
         try (Connection conn = dataSource.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query); // Using PreparedStatement is fine even without
-             params
-                     ResultSet rs = stmt.executeQuery()) {
-            while (rs.next()) {
-                User user = new User();
-                user.id = rs.getInt("id");
-                user.username = rs.getString("username");
-                user.email = rs.getString("email");
-                users.add(user);
-            }
-        }
-        return users;
+             PreparedStatement stmt = conn.prepareStatement(query);
     }
 
     private String hashPasswordPlaceholder(String plainPassword) {
