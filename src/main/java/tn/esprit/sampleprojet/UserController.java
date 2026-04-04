@@ -86,46 +86,7 @@ public class UserController {
         }
     }
 
-    public void updateUser(int userId, String newEmail, String newPassword) {
-        if (newEmail == null || !newEmail.matches("^[\\w.-]+@[\\w.-]+\\.[a-zA-Z]{2,6}$")) {
-            throw new IllegalArgumentException("Invalid email format.");
-        }
-        if (newPassword == null || newPassword.length() < 8 || !newPassword.matches(".*[A-Z].*") || !newPassword.matches(".*[a-z].*") || !newPassword.matches(".*\\d.*") || !newPassword.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*")) {
-            throw new IllegalArgumentException("New password must be at least 8 characters long and contain uppercase, lowercase, a digit, and a special character.");
-        }
 
-        try {
-            User user = userService.findById(userId);
-            if (user == null) {
-                LOGGER.log(Level.WARNING, "Attempted to update non-existent user with ID: {0}", userId);
-                throw new IllegalArgumentException("User with ID " + userId + " not found.");
-            }
-            // CRITICAL: User.email is a public field, violating encapsulation.
-            // Ideally, User should have a private email field and a public setter.
-            // As per constraints, User.java cannot be modified here.
-            user.email = newEmail.trim();
-
-            // CRITICAL: The newPassword parameter is validated but never used to update the user's password.
-            // This is a functional bug and security oversight.
-            // A corresponding method (e.g., userService.updateUserPassword(userId, newPassword))
-            // is missing in UserService.java and cannot be invented as per constraints.
-            // TODO: Implement password update logic in UserService and call it here.
-            LOGGER.log(Level.INFO, "User {0} email updated to {1}. Password update skipped (UserService method missing).", new Object[]{userId, newEmail.trim()});
-
-            // Assuming there should be a call to UserService to persist changes,
-            // but no such method (e.g., userService.save(user) or userService.updateUser(user))
-            // is explicitly provided in the UserService snippet for general updates.
-            // If userService.save(user) exists and handles updates, it should be called here.
-            // For now, only the email field is "updated" in the in-memory object.
-            // This is an architectural gap.
-            // TODO: Add a call to a UserService method to persist the updated user object.
-
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "SQL error while updating user {0}: {1}", new Object[]{userId, e.getMessage()});
-            throw new RuntimeException("An unexpected error occurred while updating user profile.
-                    Please try again later.");
-        }
-    }
 
     public void resetPassword(String username, String newPassword) {
         if (username == null || username.trim().isEmpty()) {
