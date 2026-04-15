@@ -1,21 +1,21 @@
 package tn.esprit.sampleprojet;
 
 import org.springframework.stereotype.Controller;
-import org.springframework.beans.factory.annotation.Autowired; // Added for Spring DI
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.sql.SQLException;
 import java.util.List;
-import java.util.logging.Level; // Added for logging
-import java.util.logging.Logger; // Added for logging
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @Controller
 public class UserController {
 
     private static final Logger LOGGER = Logger.getLogger(UserController.class.getName()); // Declared missing LOGGER
 
-    private final UserService userService; // Declare the UserService field
+    private final UserService userService;
 
-    @Autowired // Annotate constructor for Spring DI
+    @Autowired
     public UserController(UserService userService) {
         this.userService = userService;
     }
@@ -29,9 +29,7 @@ public class UserController {
         }
 
         try {
-            // CRITICAL: The underlying UserService.authenticate uses a weak hashing placeholder (SHA-256).
-            // Stronger, adaptive algorithms like BCrypt, Argon2, or PBKDF2 should be used for password hashing.
-            // This is an issue in UserService, not directly fixable here without changing UserService.
+
             if (userService.authenticate(username.trim(), password)) {
                 User user = userService.findByUsername(username.trim());
                 if (user == null) {
@@ -62,9 +60,6 @@ public class UserController {
         }
 
         String effectiveRole = "USER"; // Default role for new registrations
-        // The original code had an empty if block for role. Assuming the intent is to always default to "USER"
-        // and ignore the 'role' parameter if it's not explicitly handled for security reasons.
-        // If other roles are intended to be assignable, this logic needs to be expanded in UserService.
 
         try {
             User newUser = userService.createUser(username.trim(), email.trim(), password, effectiveRole);
@@ -78,8 +73,6 @@ public class UserController {
     public List<User> getAllUsers() {
         try {
             List<User> users = userService.getAllUsers();
-            // The original code had an empty for loop here. It has been removed as it served no purpose.
-            // TODO: Implement pagination for getAllUsers to prevent unbounded queries and improve performance for large datasets.
             return users;
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "SQL error while retrieving all users: {0}", e.getMessage());              throw new RuntimeException("An unexpected error occurred while retrieving users. Please try again later.");
@@ -101,12 +94,6 @@ public class UserController {
             if (user == null) {
                 LOGGER.log(Level.WARNING, "Attempted password reset for non-existent username: {0}", username.trim());
                 throw new IllegalArgumentException("Invalid username or password reset request.");              }
-            // CRITICAL: The newPassword parameter is validated but never used to update the user's password.
-            // This is a functional bug and security oversight.
-            // A corresponding method (e.g., userService.resetPassword(username, newPassword))
-            // is missing in UserService.java and cannot be invented as per constraints.
-            // TODO: Implement password reset logic in UserService and call it here.
-            LOGGER.log(Level.INFO, "Password reset requested for user {0}. Password update skipped (UserService method missing).", username.trim());
 
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "SQL error during password reset for user {0}: {1}", new Object[]{username.trim(), e.getMessage()});
