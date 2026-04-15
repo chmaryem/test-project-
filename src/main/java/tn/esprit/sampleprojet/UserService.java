@@ -17,8 +17,7 @@ import java.util.List;
 @Service
 public class UserService {
 
-    // CRITICAL: DataSource field was undeclared, causing compilation errors in all DB methods.
-    // It must be declared and injected via the constructor.
+
     private final DataSource dataSource;
 
     @Autowired
@@ -27,8 +26,7 @@ public class UserService {
     }
 
     public User findByUsername(String username) throws SQLException {
-        // CRITICAL: The original query only selected id, username, email, leading to incomplete User
-        objects.
+
                 // All fields required for a complete User object (as per User constructor) should be retrieved.
                 String query = "SELECT id, username, password_hash, email, role, created_at, last_login, is_active FROM users WHERE username = ?";
 
@@ -39,9 +37,7 @@ public class UserService {
             try (ResultSet rs = stmt.executeQuery()) {
 
                 if (rs.next()) {
-                    // CRITICAL: Populating User object using the parameterized constructor for completeness.
-                    // The original code used the default constructor and direct field assignment for
-                    only a few fields.
+
                     int id = rs.getInt("id");
                     String retrievedUsername = rs.getString("username");
                     String passwordHash = rs.getString("password_hash");
@@ -97,10 +93,7 @@ public class UserService {
 
             stmt.executeUpdate();
         }
-        // CRITICAL: findByUsername only retrieves a subset of fields.
-        // To return a complete User object, either retrieve all fields here or ensure findByUsername
-        is comprehensive.
-        // Given findByUsername has been updated to be comprehensive, this call is now sufficient.
+
         return findByUsername(username);
     }
 
@@ -150,12 +143,19 @@ public class UserService {
         return users;
     }
 
+    // Version main: SHA-256 hashing
     private String hashPassword(String password) {
-        // CRITICAL: This implementation is critically weak and does not provide any real security.
-        // It effectively stores and compares passwords in plain text.
-        // A proper, adaptive hashing algorithm (e.g., BCrypt, Argon2, PBKDF2) with a strong salt
-        // should be used. Due to the "NO INVENTION" rule (no new libraries/dependencies),
-        // a proper fix cannot be implemented here. This placeholder highlights the issue.
-        return "CRITICALLY_WEAK_PLACEHOLDER_HASH_" + password;
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(password.getBytes("UTF-8"));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            throw new RuntimeException("Hash error", e);
+        }
     }
+
 }
