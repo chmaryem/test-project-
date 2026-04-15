@@ -17,8 +17,6 @@ public class User {
     private List<String> permissions;
     private List<String> nonpermissions;
 
-
-    // Constructor signature remains unchanged as per architectural rules.
     public User(int id, String username, String passwordHash, String email,
                 String role, Date createdAt, Date lastLogin, boolean isActive) {
         this.id = id;

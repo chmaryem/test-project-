@@ -3,26 +3,12 @@ package tn.esprit.sampleprojet;
 import java.util.*;
 import java.text.SimpleDateFormat;
 
-/**
- * DatabaseHelper - Utility class with many problems
- * INTENTIONAL BUGS FOR TESTING
- */
+
 public class DatabaseHelper {
-
-    // PROBLEM 1: Utility class should have private constructor
-    // This class can be instantiated but shouldn't be!
-
-    // PROBLEM 2: Non-thread-safe SimpleDateFormat as static field
     private static SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-
-    // PROBLEM 3: Mutable static collection
     public static List<String> queryLog = new ArrayList<>();
-
-    // PROBLEM 4: Magic strings scattered everywhere
     public static final String TABLE_USERS = "users";
     public static final String TABLE_ORDERS = "orders";
-
-    // PROBLEM 5: SQL builder with concatenation (injection risk)
     public static String buildSelectQuery(String table, String column, String value) {
         // PROBLEM 6: No validation or sanitization
         String query = "SELECT * FROM " + table +
@@ -45,7 +31,7 @@ public class DatabaseHelper {
             valuePart.append("'").append(values.get(key)).append("',");  // PROBLEM 10: SQL injection
         }
 
-        // PROBLEM 11: Removing last comma (fragile)
+       
         query.deleteCharAt(query.length() - 1);
         valuePart.deleteCharAt(valuePart.length() - 1);
 
@@ -110,7 +96,7 @@ public class DatabaseHelper {
         return password.length() > 5;  // Different number!
     }
 
-    // PROBLEM 26: Hardcoded configuration
+
     public static int getConnectionTimeout() {
         return 30000;  // Magic number, should be configurable
     }
@@ -119,12 +105,11 @@ public class DatabaseHelper {
         return 3;  // Another magic number
     }
 
-    // PROBLEM 27: Static method doing I/O (hard to test)
+
     public static void logQuery(String query) {
         System.out.println("[SQL] " + query);  // PROBLEM 28: Using System.out for logging
         queryLog.add(query);  // PROBLEM 29: Memory leak - unbounded list
     }
 
-    // PROBLEM 30: No way to clear query log
-    // Memory will grow indefinitely!
+
 }
