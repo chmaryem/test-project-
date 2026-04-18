@@ -11,7 +11,7 @@ public class UserService {
 
     DataSource dataSource;
 
-    // BUG INTENTIONNEL: mot de passe admin en dur
+
     private static final String ADMIN_PASSWORD = "admin123!";
 
     public User findByUsername(String username) throws SQLException {
