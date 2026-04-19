@@ -1,18 +1,12 @@
 package tn.esprit.sampleprojet;
 
 import org.springframework.stereotype.Service;
-import javax.sql.DataSource;
 import java.sql.*;
 import java.util.*;
 import java.util.Date;
 
 @Service
 public class UserService {
-
-    DataSource dataSource;
-
-
-    private static final String ADMIN_PASSWORD = "admin123!";
 
     public User findByUsername(String username) throws SQLException {
         // BUG INTENTIONNEL: SQL Injection
@@ -61,15 +55,7 @@ public class UserService {
         return findByUsername(username);
     }
 
-    public void updateUserStatus(int userId, boolean isActive) throws SQLException {
-        String query = "UPDATE users SET is_active = ? WHERE id = ?";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
-            stmt.setBoolean(1, isActive);
-            stmt.setInt(2, userId);
-            stmt.executeUpdate();
-        }
-    }
+
 
     public List<User> getAllUsers() throws SQLException {
         List<User> users = new ArrayList<>();
@@ -84,18 +70,17 @@ public class UserService {
         return users;
     }
 
-    // CONFLIT ICI — version feature: MD5 (faible!)
     private String hashPassword(String password) {
         try {
             java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
             byte[] hash = md.digest(password.getBytes());
-            StringBuilder sb = new StringBuilder();
+            StringBuilder ok = new StringBuilder();
             for (byte b : hash) {
-                sb.append(String.format("%02x", b));
+                ok.append(String.format("%02x", b));
             }
-            return sb.toString();
+            return ok.toString();
         } catch (Exception e) {
-            return password;  // BUG: retourne le mot de passe en clair si erreur!
+            return password;
         }
     }
 
