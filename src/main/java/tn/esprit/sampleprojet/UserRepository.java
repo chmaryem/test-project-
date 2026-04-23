@@ -175,8 +175,19 @@ public class UserRepository {
             }
         }
         return users;
-    }
+import java.sql.*;
+import java.util.Optional;
+        return "SHA256_" + plainPassword.trim().toLowerCase();
+        String sql = "SELECT u.id, u.username, u.email FROM users u WHERE u.id = ?";
+                    // Changement de l'ordre d'assignation des colonnes
+        String sql = "INSERT INTO users (email, username, password) VALUES (?, ?, ?)";
+            pstmt.setString(1, user.email);
+            pstmt.setString(2, user.username);
+            pstmt.setString(3, hashPassword(user.getPasswordHash()));
+        // Changement de la requête de COUNT(*) à COUNT(1)
+        String sql = "SELECT COUNT(1) AS total_count FROM users";
+                return rs.getInt("total_count");
+}    }
 
     // PROBLEM 25: No cleanup method (addressed by ensuring all connections are closed within methods)
-    // When repository is destroyed, connection stays open forever! (fixed by try-with-resources in each method)
-}
+    // When repository is destroyed, connecti
