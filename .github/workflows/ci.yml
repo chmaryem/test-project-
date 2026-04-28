@@ -1,0 +1,93 @@
+# ─────────────────────────────────────────────────────────────────
+# CI/CD Pipeline — Généré automatiquement par Code Auditor AI
+#
+# 2 jobs :
+#   1. build-test  → maven (java)
+#   2. code-review → Code Auditor (RAG + KG + LLM)
+#
+# Pour configurer les secrets :
+#   Settings → Secrets → Actions → New repository secret
+#   - OPENROUTER_API_KEY  (clé OpenRouter)
+#   - GOOGLE_API_KEY      (clé Gemini, fallback)
+# ─────────────────────────────────────────────────────────────────
+
+name: "CI/CD — Build + Code Auditor"
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+permissions:
+  statuses: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  # ── Job 1 : Build & Test ──────────────────────────────────────
+  build-test:
+    name: "🔨 Build & Test (java/maven)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: "📥 Checkout"
+        uses: actions/checkout@v4
+
+      - name: "☕ Setup Java"
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: "🔨 Build"
+        run: mvn compile -q
+
+      - name: "🧪 Tests"
+        run: mvn test -q
+
+  # ── Job 2 : Code Auditor IA Review ────────────────────────────
+  code-review:
+    name: "🔍 Code Auditor Review"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: "📥 Checkout Projet"
+        uses: actions/checkout@v4
+
+      - name: "📥 Checkout Code Auditor"
+        uses: actions/checkout@v4
+        with:
+          repository: chmaryem/code_auditor
+          path: code_auditor_tool
+
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: "📦 Cache pip"
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-auditor-${{ hashFiles('code_auditor_tool/requirements.txt') }}
+
+      - name: "📦 Install Code Auditor"
+        run: |
+          cd code_auditor_tool
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: "🔍 Analyse PR"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_PERSONAL_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: |
+          cd code_auditor_tool
+          python -m ci_cd.ci_runner \
+            --repo "${{ github.repository }}" \
+            --pr "${{ github.event.pull_request.number }}"
