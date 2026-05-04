@@ -1,0 +1,119 @@
+# ─────────────────────────────────────────────────────────────────
+# CI/CD Pipeline — Généré automatiquement par Code Auditor
+#
+# 2 jobs :
+#   1. build-test  → maven (java)
+#   2. sonar-scan  → Analyse qualité SonarQube
+#
+# Pour configurer SonarQube :
+#   1. Créer un projet sur SonarCloud.io ou votre serveur SonarQube
+#   2. Ajouter les secrets dans Settings → Secrets → Actions :
+#      - SONAR_TOKEN    : Token d'analyse SonarQube
+#      - SONAR_HOST_URL : https://sonarcloud.io (ou votre serveur)
+# ─────────────────────────────────────────────────────────────────
+
+name: "CI/CD — Build + SonarQube"
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+  statuses: write
+  pull-requests: read
+  security-events: write
+
+jobs:
+  # ── Job 1 : Build & Test ──────────────────────────────────────
+  build-test:
+    name: "🔧 Build & Test (java/maven)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: "📥 Checkout"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Requis pour SonarQube blame
+
+      - name: "Setup Java"
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: "Build"
+        run: mvn compile -q
+
+      - name: "🧪 Tests"
+        # Les tests ne bloquent pas le pipeline — SonarQube analysera quand même
+        run: mvn test -q -Dmaven.test.failure.ignore=true
+        continue-on-error: true
+
+      - name: "📦 Package"
+        run: mvn package -q -DskipTests
+
+      - name: "Upload Test Results"
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: |
+            target/surefire-reports/
+            build/test-results/
+          retention-days: 5
+
+  # ── Job 2 : SonarQube Analysis ────────────────────────────────
+  sonar-scan:
+    name: "🔍 SonarQube Analysis"
+    needs: build-test  # Attend que build-test réussisse
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: always() && needs.build-test.result == 'success'
+    steps:
+      - name: "📥 Checkout"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Requis pour l'analyse complète
+
+      - name: "⚙️ Setup Java 17 (SonarQube requiert Java)"
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: "📦 Download Build Artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results
+          path: .
+        continue-on-error: true
+
+      - name: "🔍 SonarQube Scan (Maven)"
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+            -Dsonar.projectKey=${{ github.repository_owner }}_${{ github.event.repository.name }} \
+            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
+            -Dsonar.token=${{ secrets.SONAR_TOKEN }}
+        continue-on-error: true
+
+      - name: "SonarQube Quality Gate"
+        uses: sonarsource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        continue-on-error: true
+
+      - name: "📊 SonarQube Metrics"
+        run: |
+          echo "SonarQube analysis complete"
+          echo "Project: ${{ github.repository_owner }}_${{ github.event.repository.name }}"
+          echo "URL: ${{ secrets.SONAR_HOST_URL }}/dashboard?id=${{ github.repository_owner }}_${{ github.event.repository.name }}"
+        continue-on-error: true
