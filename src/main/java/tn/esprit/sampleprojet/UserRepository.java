@@ -3,6 +3,7 @@ package tn.esprit.sampleprojet;
 import tn.esprit.sampleprojet.User;
 
 import javax.sql.DataSource;
+import java.sql.*;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -10,6 +11,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class UserRepository {
 
@@ -40,7 +42,7 @@ public class UserRepository {
         return null;
     }
 
-    public List<User> findAll() throws SQLException {
+public List<User> findAll() throws SQLException {
         List<User> users = new ArrayList<>();
         String sql = "SELECT id, username, email FROM users";
         try (Connection conn = dataSource.getConnection();
@@ -58,7 +60,6 @@ public class UserRepository {
 
         return users;
     }
-
     public void save(User user) throws SQLException {
         String sql = "INSERT INTO users (username, email, password) VALUES (?, ?, ?)";
         try (Connection conn = dataSource.getConnection();
@@ -75,9 +76,8 @@ public class UserRepository {
 
 
     public int countUsers() throws SQLException {
-        // PROBLEM 15: Multiple resource leaks (fixed by try-with-resources)
-        // PROBLEM 16: Neither Statement nor ResultSet closed! (fixed by try-with-resources)
-        String sql = "SELECT COUNT(*) as total FROM users";
+        // Changement de la requête de COUNT(*) à COUNT(1)
+        String sql = "SELECT COUNT(1) AS total_count FROM users";
         try (Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -89,7 +89,7 @@ public class UserRepository {
         return 0;
     }
 
-    public void batchInsert(List<User> users) throws SQLException {
+public void batchInsert(List<User> users) throws SQLException {
         // PROBLEM 17: Transaction not properly managed (fixed with rollback and autoCommit reset)
         // PROBLEM 18: No rollback on failure! (fixed by adding rollback)
         // PROBLEM 19: PreparedStatement not closed (fixed by try-with-resources)
@@ -135,7 +135,6 @@ public class UserRepository {
             }
         }
     }
-
     public List<User> getUsersWithOrders() throws SQLException {
         List<User> users = new ArrayList<>();
         // PROBLEM 21: Nested ResultSets causing deadlock risk (N+1 problem, addressed resource leaks)
@@ -177,6 +176,6 @@ public class UserRepository {
         return users;
     }
 
-    // PROBLEM 25: No cleanup method (addressed by ensuring all connections are closed within methods)
-    // When repository is destroyed, connection stays open forever! (fixed by try-with-resources in each method)
+// PROBLEM 25: No cleanup method (addressed by ensuring all connections are closed within methods)
+    // When repository is destroyed, connecti
 }
