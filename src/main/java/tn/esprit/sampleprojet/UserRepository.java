@@ -1,57 +1,93 @@
 package tn.esprit.sampleprojet;
 
-import tn.esprit.sampleprojet.User;
-import javax.sql.DataSource;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.util.Base64;
+
+import javax.sql.DataSource;
 
 public class UserRepository {
 
+    private DataSource dataSource;
 
-    private String hashPassword(String plainPassword) {
-        return "SHA256_" + plainPassword.trim().toLowerCase();
+    // Setter injection for DataSource
+    public void setDataSource(DataSource dataSource) {
+        this.dataSource = dataSource;
     }
 
-    public User findById(int id) throws SQLException {
+    private String hashPassword(String plainPassword) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(plainPassword.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 algorithm not available", e);
+        }
+    }
+
+    public Optional<User> findById(int id) throws SQLException {
+        if (id <= 0) {
+            throw new IllegalArgumentException("ID must be positive");
+        }
         String sql = "SELECT u.id, u.username, u.email FROM users u WHERE u.id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, id);
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
-                    // Changement de l'ordre d'assignation des colonnes
                     User user = new User();
                     user.username = rs.getString("username");
                     user.email = rs.getString("email");
                     user.id = rs.getInt("id");
-                    return user;
+                    return Optional.of(user);
                 }
             }
         }
-        return null;
+        return Optional.empty();
     }
 
     public void save(User user) throws SQLException {
+        if (user == null) {
+            throw new IllegalArgumentException("User cannot be null");
+        }
+        if (user.email == null || user.email.trim().isEmpty()) {
+            throw new IllegalArgumentException("Email cannot be empty");
+        }
+        if (user.username == null || user.username.trim().isEmpty()) {
+            throw new IllegalArgumentException("Username cannot be empty");
+        }
+
         String sql = "INSERT INTO users (email, username, password) VALUES (?, ?, ?)";
         try (Connection conn = dataSource.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+
+            // Hash the plain password - assume user.getPasswordHash() returns plain text
+            String passwordToStore = hashPassword(user.getPasswordHash() != null ? user.getPasswordHash() : "");
 
             pstmt.setString(1, user.email);
             pstmt.setString(2, user.username);
-            pstmt.setString(3, hashPassword(user.getPasswordHash()));
+            pstmt.setString(3, passwordToStore);
 
             pstmt.executeUpdate();
+
+            try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    user.id = generatedKeys.getInt(1);
+                }
+            }
         }
     }
 
     public int countUsers() throws SQLException {
-        // Changement de la requête de COUNT(*) à COUNT(1)
-        String sql = "SELECT COUNT(1) AS total_count FROM users";
+        String sql = "SELECT COUNT(*) AS total_count FROM users";
         try (Connection conn = dataSource.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
 
             if (rs.next()) {
                 return rs.getInt("total_count");
@@ -60,30 +96,36 @@ public class UserRepository {
         return 0;
     }
 
-    public List<User> getUsersWithOrders() throws SQLException {
+    public List<User> getUsersWithOrders(int limit, int offset) throws SQLException {
+        if (limit <= 0) {
+            limit = 100; // default limit
+        }
+        if (offset < 0) {
+            offset = 0;
+        }
+
         List<User> users = new ArrayList<>();
-        String selectUsersSql = "SELECT id, username, email FROM users";
+        String selectUsersSql = "SELECT u.id, u.username, u.email, COUNT(o.id) as order_count " +
+                "FROM users u LEFT JOIN orders o ON u.id = o.user_id " +
+                "GROUP BY u.id, u.username, u.email " +
+                "ORDER BY u.id " +
+                "LIMIT ? OFFSET ?";
+
         try (Connection conn = dataSource.getConnection();
-             Statement stmt1 = conn.createStatement();
-             ResultSet rs1 = stmt1.executeQuery(selectUsersSql)) {
+             PreparedStatement pstmt = conn.prepareStatement(selectUsersSql)) {
+            pstmt.setInt(1, limit);
+            pstmt.setInt(2, offset);
 
-            while (rs1.next()) {
-                User user = new User();
-                user.id = rs1.getInt("id");
-                user.username = rs1.getString("username");
-                user.email = rs1.getString("email");
-                users.add(user);
-
-                String selectOrdersSql = "SELECT * FROM orders WHERE user_id = ?";
-                try (PreparedStatement pstmt2 = conn.prepareStatement(selectOrdersSql)) {
-                    pstmt2.setInt(1, user.id);
-                    try (ResultSet rs2 = pstmt2.executeQuery()) {
-
-                    }
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    User user = new User();
+                    user.id = rs.getInt("id");
+                    user.username = rs.getString("username");
+                    user.email = rs.getString("email");
+                    users.add(user);
                 }
             }
         }
         return users;
     }
-
 }

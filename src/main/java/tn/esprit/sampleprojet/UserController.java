@@ -13,7 +13,7 @@ public class UserController {
 
     private static final Logger LOGGER = Logger.getLogger(UserController.class.getName()); // Declared missing LOGGER
 
-    private final UserService userService;
+
 
     @Autowired
     public UserController(UserService userService) {
@@ -59,7 +59,7 @@ public class UserController {
             throw new IllegalArgumentException("Password must be at least 8 characters long and contain uppercase, lowercase, a digit, and a special character.");
         }
 
-        String effectiveRole = "USER"; // Default role for new registrations
+        String effectiveRole = "USER";
 
         try {
             User newUser = userService.createUser(username.trim(), email.trim(), password, effectiveRole);
