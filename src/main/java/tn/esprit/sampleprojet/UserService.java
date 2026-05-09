@@ -14,7 +14,7 @@ public class UserService {
 
     private DataSource dataSource;
 
-    // Setter injection for DataSource (following the same pattern as UserRepository)
+    // Setter injection for DataSource (Spring compatible)
     public void setDataSource(DataSource dataSource) {
         this.dataSource = dataSource;
     }
@@ -37,10 +37,8 @@ public class UserService {
     public User createUser(String username, String email, String password, String role) throws SQLException {
         String hashedPassword = hashPassword(password);
         String insertQuery = "INSERT INTO users (username, email, password_hash, role, created_at, is_active) VALUES (?, ?, ?, ?, ?, ?)";
-
-        int generatedId = 0;
         try (Connection conn = dataSource.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(insertQuery, Statement.RETURN_GENERATED_KEYS)) {
+             PreparedStatement stmt = conn.prepareStatement(insertQuery)) {
             stmt.setString(1, username);
             stmt.setString(2, email);
             stmt.setString(3, hashedPassword);
@@ -48,17 +46,8 @@ public class UserService {
             stmt.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
             stmt.setBoolean(6, true);
             stmt.executeUpdate();
-
-            try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
-                if (generatedKeys.next()) {
-                    generatedId = generatedKeys.getInt(1);
-                }
-            }
         }
-
-        // Return user directly without additional DB call
-        return new User(generatedId, username, hashedPassword, email, role,
-                new Date(), null, true);
+        return findByUsername(username);
     }
 
     public void updateUserStatus(int userId, boolean isActive) throws SQLException {
@@ -73,7 +62,7 @@ public class UserService {
 
     public List<User> getAllUsers() throws SQLException {
         List<User> users = new ArrayList<>();
-        String query = "SELECT id, username, password_hash, email, role, created_at, last_login, is_active FROM users LIMIT 1000";
+        String query = "SELECT id, username, email, role, created_at, last_login, is_active FROM users LIMIT 1000";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query);
              ResultSet rs = stmt.executeQuery()) {
@@ -84,12 +73,24 @@ public class UserService {
         return users;
     }
 
+    public User findByUsername(String username) throws SQLException {
+        String query = "SELECT id, username, password_hash, email, role, created_at, last_login, is_active FROM users WHERE username = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, username);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapUser(rs);
+                }
+            }
+        }
+        return null;
+    }
+
     private String hashPassword(String password) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
-            // Add static salt for basic protection (note: per-user salt would require schema changes)
-            String saltedPassword = password + "StaticSalt2024";
-            byte[] hash = md.digest(saltedPassword.getBytes(StandardCharsets.UTF_8));
+            byte[] hash = md.digest(password.getBytes(StandardCharsets.UTF_8));
             StringBuilder sb = new StringBuilder();
             for (byte b : hash) {
                 sb.append(String.format("%02x", b));
