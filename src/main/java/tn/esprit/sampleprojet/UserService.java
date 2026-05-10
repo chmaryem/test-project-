@@ -5,6 +5,8 @@ import javax.sql.DataSource;
 import java.sql.*;
 import java.util.*;
 import java.util.Date;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.nio.charset.StandardCharsets;
@@ -12,11 +14,28 @@ import java.nio.charset.StandardCharsets;
 @Service
 public class UserService {
 
+    private static final Logger LOGGER = Logger.getLogger(UserService.class.getName());
+    private static final int DEFAULT_PAGE_SIZE = 1000;
+
     private DataSource dataSource;
 
-    // Setter injection for DataSource (Spring compatible)
-    public void setDataSource(DataSource dataSource) {
+    public UserService(DataSource dataSource) {
         this.dataSource = dataSource;
+    }
+
+    public User findByUsername(String username) throws SQLException {
+        String query = "SELECT id, username, password_hash, email, role, created_at, last_login, is_active FROM users WHERE username = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, username);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapUser(rs);
+                }
+            }
+        }
+        LOGGER.log(Level.FINE, "User not found: {0}", username);
+        return null;
     }
 
     public boolean authenticate(String username, String password) throws SQLException {
@@ -31,6 +50,7 @@ public class UserService {
                 }
             }
         }
+        LOGGER.log(Level.WARNING, "Failed authentication attempt for username: {0}", username);
         return false;
     }
 
@@ -47,6 +67,7 @@ public class UserService {
             stmt.setBoolean(6, true);
             stmt.executeUpdate();
         }
+        LOGGER.log(Level.INFO, "User created successfully: {0}", username);
         return findByUsername(username);
     }
 
@@ -58,11 +79,12 @@ public class UserService {
             stmt.setInt(2, userId);
             stmt.executeUpdate();
         }
+        LOGGER.log(Level.INFO, "User status updated: id={0}, isActive={1}", new Object[]{userId, isActive});
     }
 
     public List<User> getAllUsers() throws SQLException {
         List<User> users = new ArrayList<>();
-        String query = "SELECT id, username, email, role, created_at, last_login, is_active FROM users LIMIT 1000";
+        String query = "SELECT id, username, password_hash, email, role, created_at, last_login, is_active FROM users LIMIT " + DEFAULT_PAGE_SIZE;
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query);
              ResultSet rs = stmt.executeQuery()) {
@@ -70,21 +92,8 @@ public class UserService {
                 users.add(mapUser(rs));
             }
         }
+        LOGGER.log(Level.FINE, "Retrieved {0} users", users.size());
         return users;
-    }
-
-    public User findByUsername(String username) throws SQLException {
-        String query = "SELECT id, username, password_hash, email, role, created_at, last_login, is_active FROM users WHERE username = ?";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
-            stmt.setString(1, username);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return mapUser(rs);
-                }
-            }
-        }
-        return null;
     }
 
     private String hashPassword(String password) {
@@ -97,6 +106,7 @@ public class UserService {
             }
             return sb.toString();
         } catch (NoSuchAlgorithmException e) {
+            LOGGER.log(Level.SEVERE, "SHA-256 algorithm not available", e);
             throw new RuntimeException("Error hashing password: SHA-256 algorithm not found.", e);
         }
     }
