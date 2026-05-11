@@ -1,17 +1,18 @@
 # -----------------------------------------------------------------
 # CI/CD Pipeline -- Genere automatiquement par Code Auditor
 #
-# Phase 1 - 4 jobs :
-#   1. build-test   -> maven (java)
-#   2. sonar-scan   -> Qualite + Coverage + Quality Gate BLOQUANT
-#   3. dep-scan     -> Vulnerabilites CVE dans les dependances
-#   4. codeql-scan  -> Securite statique profonde (GitHub natif)
+# Phase 1 - 5 jobs :
+#   1. build-test    -> maven (java)
+#   2. sonar-scan    -> Qualite + Coverage + Quality Gate BLOQUANT
+#   3. dep-scan      -> Vulnerabilites CVE dans les dependances
+#   4. codeql-scan   -> Securite statique profonde (GitHub natif)
+#   5. docker-trivy  -> Scan securite image Docker
 #
 # Secrets requis :
 #   - SONAR_TOKEN    : Token SonarCloud (sonarcloud.io)
 # -----------------------------------------------------------------
 
-name: "CI -- Build + SonarCloud + Dep-Scan + CodeQL"
+name: "CI -- Build + SonarCloud + Dep-Scan + CodeQL + Trivy"
 
 on:
   pull_request:
@@ -202,3 +203,73 @@ jobs:
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:java"
+
+
+
+  # -- Job 5 : Docker Security Scan (Trivy) --------------------------------
+  docker-trivy:
+    name: "Container Scan (Trivy)"
+    needs: build-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: always() && needs.build-test.result == 'success'
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Check Dockerfile exists"
+        id: check_docker
+        run: |
+          if [ -f "Dockerfile" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Dockerfile absent — skip Trivy scan"
+          fi
+
+      - name: "Build Docker image"
+        if: steps.check_docker.outputs.exists == 'true'
+        run: docker build -t app:${{ github.sha }} .
+
+      - name: "Trivy — scan vulnerabilites"
+        if: steps.check_docker.outputs.exists == 'true'
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          image-ref: app:${{ github.sha }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 0
+
+      - name: "Upload SARIF to GitHub Security"
+        if: steps.check_docker.outputs.exists == 'true'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-container
+
+      - name: "Trivy — rapport HTML"
+        if: steps.check_docker.outputs.exists == 'true'
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          image-ref: app:${{ github.sha }}
+          format: template
+          template: "@/contrib/html.tpl"
+          output: trivy-report.html
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 0
+
+      - name: "Upload Trivy rapport"
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-security-report
+          path: |
+            trivy-results.sarif
+            trivy-report.html
+          retention-days: 10
