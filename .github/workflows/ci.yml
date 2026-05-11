@@ -100,7 +100,7 @@ jobs:
       - name: "SonarCloud Scan (Maven)"
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_HOST_URL: "https://sonarcloud.io"
         run: >
           mvn -B sonar:sonar -DskipTests
           -Dsonar.projectKey=${{ github.repository_owner }}_${{ github.event.repository.name }}
@@ -113,12 +113,12 @@ jobs:
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_HOST_URL: "https://sonarcloud.io"
 
       - name: "Dashboard URL"
         if: always()
         run: |
           echo "============================================"
           echo " SonarCloud Analysis Complete"
-          echo " URL : ${{ secrets.SONAR_HOST_URL }}/dashboard?id=${{ github.repository_owner }}_${{ github.event.repository.name }}"
+          echo " URL : https://sonarcloud.io/dashboard?id=${{ github.repository_owner }}_${{ github.event.repository.name }}"
           echo "============================================"
