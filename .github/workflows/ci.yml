@@ -234,7 +234,7 @@ jobs:
         if: steps.check_docker.outputs.exists == 'true'
         run: docker build -t app:${{ github.sha }} .
 
-      - name: "Trivy — scan vulnerabilites"
+      - name: "Trivy — scan vulnerabilites (SARIF)"
         if: steps.check_docker.outputs.exists == 'true'
         uses: aquasecurity/trivy-action@master
         with:
@@ -252,14 +252,23 @@ jobs:
           sarif_file: trivy-results.sarif
           category: trivy-container
 
-      - name: "Trivy — rapport HTML"
+      - name: "Trivy — rapport JSON"
         if: steps.check_docker.outputs.exists == 'true'
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: app:${{ github.sha }}
-          format: template
-          template: "@/contrib/html.tpl"
-          output: trivy-report.html
+          format: json
+          output: trivy-report.json
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 0
+
+      - name: "Trivy — resume console"
+        if: steps.check_docker.outputs.exists == 'true'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: app:${{ github.sha }}
+          format: table
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: 0
@@ -271,5 +280,5 @@ jobs:
           name: trivy-security-report
           path: |
             trivy-results.sarif
-            trivy-report.html
+            trivy-report.json
           retention-days: 10
