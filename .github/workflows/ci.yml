@@ -179,7 +179,7 @@ jobs:
 
 
 
-  # ── Job 4 : Dependency CVE Scan ────────────────────────────────────────────
+  # -- Job 4 : Dependency CVE Scan --
   dep-scan:
     name: "Dependency CVE Scan"
     runs-on: ubuntu-latest
@@ -187,23 +187,21 @@ jobs:
     if: always() && needs.build-test.result == 'success'
     timeout-minutes: 15
     steps:
-      - name: "📥 Checkout"
+      - name: "Checkout"
         uses: actions/checkout@v4
 
-      - name: "⚙️ Setup Java"
+      - name: "Setup Java"
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: "🔒 OWASP Dependency-Check"
-        # Vérifie les CVE dans les dépendances Maven/Gradle
-        # -DfailBuildOnCVSS=9 : bloque sur CVE CRITICAL (score CVSS >= 9)
+      - name: "OWASP Dependency-Check"
         run: mvn org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=9
-        continue-on-error: true  # OWASP peut être lent (téléchargement DB NVD)
+        continue-on-error: true
 
-      - name: "📤 Upload OWASP results"
+      - name: "Upload OWASP results"
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -212,37 +210,51 @@ jobs:
           retention-days: 10
 
 
-  # ── Job 5 : Docker Build + Trivy Scan ────────────────────────────────────
-  # Conditionnel : tourne uniquement si un Dockerfile existe dans le repo
+  # -- Job 5 : Docker Build + Trivy Scan --
+  # Le job tourne si build-test=success.
+  # Les steps Docker sont conditionnes par la presence d'un Dockerfile (detection bash).
   docker-trivy:
     name: "Docker Build + Trivy Security Scan"
     runs-on: ubuntu-latest
     needs: build-test
-    if: |
-      always() &&
-      needs.build-test.result == 'success' &&
-      hashFiles('Dockerfile') != ''
+    if: needs.build-test.result == 'success'
     timeout-minutes: 20
     permissions:
-      security-events: write  # Upload SARIF vers GitHub Security
-      packages: write         # Push vers GHCR (si main)
+      security-events: write
+      packages: write
       contents: read
     steps:
-      - name: "📥 Checkout"
+      - name: "Checkout"
         uses: actions/checkout@v4
 
-      - name: "🐳 Set up Docker Buildx"
+      - name: "Check Dockerfile exists"
+        id: check_dockerfile
+        run: |
+          if [ -f "Dockerfile" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Dockerfile detected"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "No Dockerfile found - Docker steps will be skipped"
+          fi
+
+      - name: "Set up Docker Buildx"
+        if: steps.check_dockerfile.outputs.exists == 'true'
         uses: docker/setup-buildx-action@v3
 
-      - name: "🔑 Login to GHCR"
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: "Login to GHCR"
+        if: >-
+          steps.check_dockerfile.outputs.exists == 'true' &&
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: "🔨 Build Docker Image (local scan)"
+      - name: "Build Docker Image"
+        if: steps.check_dockerfile.outputs.exists == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -252,26 +264,28 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: "🔒 Trivy — Container Security Scan"
-        # Trivy scanne l'image pour les CVE (OS packages + libs applicatives)
-        # CRITICAL,HIGH : bloque le pipeline sur les CVE les plus sévères
+      - name: "Trivy - Container Security Scan"
+        if: steps.check_dockerfile.outputs.exists == 'true'
         uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: '${{ github.repository }}:scan-${{ github.sha }}'
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
-          exit-code: '1'  # Bloque le pipeline si CVE CRITICAL/HIGH trouvés
+          exit-code: '1'
           ignore-unfixed: true
 
-      - name: "📤 Upload Trivy SARIF to GitHub Security"
-        if: always()
+      - name: "Upload Trivy SARIF"
+        if: steps.check_dockerfile.outputs.exists == 'true'
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-results.sarif
 
-      - name: "🚀 Push to GHCR (main only)"
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: "Push to GHCR (main only)"
+        if: >-
+          steps.check_dockerfile.outputs.exists == 'true' &&
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v6
         with:
           context: .
