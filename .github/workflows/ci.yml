@@ -94,17 +94,15 @@ jobs:
           path: target/site/jacoco/
         continue-on-error: true
 
+      - name: "Compile (requis par SonarCloud pour analyser le bytecode)"
+        run: mvn -B compile -q
+
       - name: "SonarCloud Scan (Maven)"
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
-          mvn -B sonar:sonar -DskipTests \
-            -Dsonar.projectKey=${{ github.repository_owner }}_${{ github.event.repository.name }} \
-            -Dsonar.organization=${{ github.repository_owner }} \
-            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
-            -Dsonar.token=${{ secrets.SONAR_TOKEN }} \
-            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+          mvn -B sonar:sonar -DskipTests             -Dsonar.projectKey=${{ github.repository_owner }}_${{ github.event.repository.name }}             -Dsonar.organization=${{ github.repository_owner }}             -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}             -Dsonar.token=${{ secrets.SONAR_TOKEN }}             -Dsonar.java.binaries=target/classes             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
 
       - name: "SonarCloud Quality Gate"
         uses: sonarsource/sonarqube-quality-gate-action@v1.1.0
