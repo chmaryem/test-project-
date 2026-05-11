@@ -145,20 +145,28 @@ jobs:
           cache: 'maven'
 
       - name: "OWASP Dependency-Check"
-        run: |
-          mvn -B org.owasp:dependency-check-maven:check \
-            -DfailBuildOnCVSS=9 \
-            -DsuppressionFile=.owasp-suppressions.xml \
-            -Dformats=HTML,JSON \
-            || echo "Vulnerabilites detectees - voir rapport"
+        run: >
+          mvn -B org.owasp:dependency-check-maven:check
+          -DfailBuildOnCVSS=9
+          -Dformat=HTML
+          -Dformat=JSON
+          -DoutputDirectory=target/dependency-check
         continue-on-error: true
+
+      - name: "Verifier rapport genere"
+        run: |
+          if [ -f target/dependency-check/dependency-check-report.html ]; then
+            echo "Rapport OWASP genere avec succes"
+            wc -l target/dependency-check/dependency-check-report.html
+          else
+            echo "Rapport non trouve — liste des fichiers target/:"
+            find target/ -name "dependency-check*" 2>/dev/null || echo "Aucun fichier dependency-check"
+          fi
 
       - name: "Upload OWASP Report"
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: owasp-dependency-report
-          path: |
-            target/dependency-check-report.html
-            target/dependency-check-report.json
+          path: target/dependency-check/
           retention-days: 10
