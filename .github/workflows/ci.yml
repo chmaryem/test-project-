@@ -1,16 +1,17 @@
 # -----------------------------------------------------------------
 # CI/CD Pipeline -- Genere automatiquement par Code Auditor
 #
-# Phase 1 - 3 jobs :
-#   1. build-test  -> maven (java)
-#   2. sonar-scan  -> Qualite + Coverage + Quality Gate BLOQUANT
-#   3. dep-scan    -> Vulnerabilites CVE dans les dependances
+# Phase 1 - 4 jobs :
+#   1. build-test   -> maven (java)
+#   2. sonar-scan   -> Qualite + Coverage + Quality Gate BLOQUANT
+#   3. dep-scan     -> Vulnerabilites CVE dans les dependances
+#   4. codeql-scan  -> Securite statique profonde (GitHub natif)
 #
-# Secrets requis dans GitHub Settings > Secrets > Actions :
+# Secrets requis :
 #   - SONAR_TOKEN    : Token SonarCloud (sonarcloud.io)
 # -----------------------------------------------------------------
 
-name: "CI -- Build + SonarCloud + Dep-Scan"
+name: "CI -- Build + SonarCloud + Dep-Scan + CodeQL"
 
 on:
   pull_request:
@@ -22,6 +23,8 @@ permissions:
   contents: read
   statuses: write
   pull-requests: read
+  security-events: write   # Requis pour CodeQL SARIF upload
+  actions: read            # Requis pour CodeQL
 
 jobs:
 
@@ -170,3 +173,35 @@ jobs:
           name: owasp-dependency-report
           path: target/dependency-check/
           retention-days: 10
+
+
+
+  # -- Job 4 : CodeQL Security Analysis ---------------------------------
+  codeql-scan:
+    name: "CodeQL Security Analysis (java)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Initialize CodeQL"
+        uses: github/codeql-action/init@v3
+        with:
+          languages: java
+          queries: security-extended
+
+      - name: "Build (CodeQL)"
+        run: mvn -B compile -DskipTests -q
+
+      - name: "Autobuild"
+        uses: github/codeql-action/autobuild@v3
+
+      - name: "Analyze"
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:java"
