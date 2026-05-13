@@ -1,0 +1,16 @@
+# docker-compose.yml — genere par Code Auditor
+# Utilisez les variables d'environnement pour personnaliser
+services:
+  app:
+    image: ${DOCKERHUB_USERNAME:-votre-login}/${APP_NAME:-test-project-}:latest
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
