@@ -319,16 +319,17 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: "Extract metadata (tags & labels)"
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}
-          tags: |
-            type=sha,prefix=,format=short
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+      - name: "Prepare image name"
+        id: image
+        run: |
+          # Lowercase + strip trailing dashes (noms comme 'test-project-' invalides)
+          REPO=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]' | sed 's/-*$//')
+          USER=$(echo "${{ secrets.DOCKERHUB_USERNAME }}" | tr '[:upper:]' '[:lower:]')
+          SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "tag_sha=$USER/$REPO:$SHA"       >> $GITHUB_OUTPUT
+          echo "tag_latest=$USER/$REPO:latest"  >> $GITHUB_OUTPUT
+          echo "url=https://hub.docker.com/r/$USER/$REPO" >> $GITHUB_OUTPUT
+          echo "Image : $USER/$REPO  Tags: $SHA + latest"
 
       - name: "Build & Push (linux/amd64 + linux/arm64)"
         uses: docker/build-push-action@v5
@@ -336,8 +337,9 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ${{ steps.image.outputs.tag_sha }}
+            ${{ steps.image.outputs.tag_latest }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -345,6 +347,7 @@ jobs:
         run: |
           echo "========================================"
           echo " Image publiee sur Docker Hub"
-          echo " Tags : ${{ steps.meta.outputs.tags }}"
-          echo " URL : https://hub.docker.com/r/${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}"
+          echo " Tags  : ${{ steps.image.outputs.tag_sha }}"
+          echo "         ${{ steps.image.outputs.tag_latest }}"
+          echo " URL   : ${{ steps.image.outputs.url }}"
           echo "========================================"
