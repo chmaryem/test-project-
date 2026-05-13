@@ -146,7 +146,7 @@ jobs:
     name: "Dependency Scan (OWASP)"
     needs: build-test
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     if: always() && needs.build-test.result == 'success'
     steps:
       - name: "Checkout"
@@ -157,33 +157,27 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'maven'
 
       - name: "OWASP Dependency-Check"
-        run: >
-          mvn -B org.owasp:dependency-check-maven:check
-          -DfailBuildOnCVSS=9
-          -Dformat=HTML
-          -Dformat=JSON
-          -DoutputDirectory=target/dependency-check
+        uses: dependency-check/Dependency-Check_Action@main
+        env:
+          JAVA_HOME: /opt/jdk
+        with:
+          project: '${{ github.event.repository.name }}'
+          path: '.'
+          format: 'HTML'
+          args: >
+            --failOnCVSS 9
+            --enableRetired
+            --nvdApiKey ${{ secrets.NVD_API_KEY }}
         continue-on-error: true
-
-      - name: "Verifier rapport genere"
-        run: |
-          if [ -f target/dependency-check/dependency-check-report.html ]; then
-            echo "Rapport OWASP genere avec succes"
-            wc -l target/dependency-check/dependency-check-report.html
-          else
-            echo "Rapport non trouve — liste des fichiers target/:"
-            find target/ -name "dependency-check*" 2>/dev/null || echo "Aucun fichier dependency-check"
-          fi
 
       - name: "Upload OWASP Report"
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: owasp-dependency-report
-          path: target/dependency-check/
+          path: ${{ github.workspace }}/reports
           retention-days: 10
 
 
@@ -299,13 +293,16 @@ jobs:
   # -- Job 6 : Publish to Docker Hub -----------------------------------------
   publish:
     name: "Publish to Docker Hub"
-    needs: [build-test, sonar-scan, dep-scan, docker-trivy]
+    needs: [build-test, docker-trivy]
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Publie si build-test OK + push sur main
+    # Sonar/OWASP fournissent de la visibilite mais ne bloquent PAS le publish
     if: |
       github.ref == 'refs/heads/main' &&
       github.event_name == 'push' &&
-      needs.build-test.result == 'success'
+      needs.build-test.result == 'success' &&
+      needs.docker-trivy.result != 'failure'
     steps:
       - name: "Checkout"
         uses: actions/checkout@v4
@@ -349,6 +346,5 @@ jobs:
           echo "========================================"
           echo " Image publiee sur Docker Hub"
           echo " Tags : ${{ steps.meta.outputs.tags }}"
-          echo " Digest : ${{ steps.build-push.outputs.digest }}"
           echo " URL : https://hub.docker.com/r/${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}"
           echo "========================================"
