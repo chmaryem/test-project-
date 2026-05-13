@@ -319,19 +319,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: "Sanitize image name"
-        id: prep
-        run: |
-          REPO="${{{{ github.event.repository.name }}}}"
-          # Docker interdit les majuscules et les tirets a la fin du nom d'image
-          CLEAN_REPO=$(echo "$REPO" | sed 's/-*$//' | tr '[:upper:]' '[:lower:]')
-          echo "image_name=$CLEAN_REPO" >> $GITHUB_OUTPUT
-
       - name: "Extract metadata (tags & labels)"
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/${{{{ steps.prep.outputs.image_name }}}}
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}
           tags: |
             type=sha,prefix=,format=short
             type=raw,value=latest,enable={{is_default_branch}}
@@ -354,5 +346,5 @@ jobs:
           echo "========================================"
           echo " Image publiee sur Docker Hub"
           echo " Tags : ${{ steps.meta.outputs.tags }}"
-          echo " URL : https://hub.docker.com/r/${{ secrets.DOCKERHUB_USERNAME }}/${{{{ steps.prep.outputs.image_name }}}}"
+          echo " URL : https://hub.docker.com/r/${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}"
           echo "========================================"
