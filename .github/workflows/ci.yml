@@ -331,12 +331,12 @@ jobs:
           echo "url=https://hub.docker.com/r/$USER/$REPO" >> $GITHUB_OUTPUT
           echo "Image : $USER/$REPO  Tags: $SHA + latest"
 
-      - name: "Build & Push (linux/amd64 + linux/arm64)"
+      - name: "Build & Push (linux/amd64)"
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           tags: |
             ${{ steps.image.outputs.tag_sha }}
             ${{ steps.image.outputs.tag_latest }}
