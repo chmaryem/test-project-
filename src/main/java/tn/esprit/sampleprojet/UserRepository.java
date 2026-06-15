@@ -75,8 +75,6 @@ pstmt.setString(3, hashPassword(user.getPasswordHash()));
     }
 
     public int countUsers() throws SQLException {
-// Changement de la requête de COUNT(*) à COUNT(1)
-// SECURITE : Utilisation de try-with-resources pour éviter les leaks de ressources
 String sql = "SELECT COUNT(1) AS total_count FROM users";
         try (Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement();
