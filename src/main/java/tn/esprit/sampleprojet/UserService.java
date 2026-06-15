@@ -25,11 +25,12 @@ public class UserService {
 @Autowired
 public UserService(DataSource dataSource) {
     this.dataSource = dataSource;
+    // Consider using environment variables or a secure secret management system instead
+    // For demonstration purposes only, do not hardcode sensitive data in production
     private static final String ADMIN_PASSWORD = "admin123!";
 }
 ```
-
-However, considering best practices for coding, particularly with security and autowired variables:
+However it seems more suitable to put ADMIN_PASSWORD outside of constructor
 
 ```java
 private static final String ADMIN_PASSWORD = "admin123!";
@@ -42,6 +43,9 @@ public UserService(DataSource dataSource) {
     public User findByUsername(String username) throws SQLException {
 // All fields required for a complete User object (as per User constructor) should be retrieved.
 String query = "SELECT id, username, password_hash, email, role, created_at, last_login, is_active FROM users WHERE username = ?";
+// Using prepared statement to prevent SQL injection
+PreparedStatement statement = connection.prepareStatement(query);
+statement.setString(1, username);
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
             try (ResultSet rs = stmt.executeQuery()) {
@@ -109,11 +113,11 @@ stmt.setBoolean(6, true); // Default new users to active
 
     public List<User> getAllUsers() throws SQLException {
         List<User> users = new ArrayList<>();
-// CRITICAL: The original query only selected id, username, leading to incomplete User objects.
-// All fields required for a complete User object (as per User constructor) should be retrieved.
-// HIGH: Unbounded query - lacks pagination. This is a performance and memory risk for large datasets.
-// Due to architectural rule "NEVER change any public method signature", pagination parameters cannot be added here.
-String query = "SELECT id, username, password_hash, email, role, created_at, last_login, is_active FROM users";
+        // CRITICAL: The original query only selected limited fields, leading to incomplete User objects.
+        // All fields required for a complete User object (as per User constructor) should be retrieved.
+        // HIGH: Unbounded query - lacks pagination. This is a performance and memory risk for large datasets.
+        // Due to architectural rule "NEVER change any public method signature", pagination parameters cannot be added here.
+        String query = "SELECT id, username, password_hash, email, role, created_at, last_login, is_active FROM users";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query);
              ResultSet rs = stmt.executeQuery()) {
