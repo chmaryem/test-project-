@@ -19,25 +19,35 @@ import tn.esprit.sampleprojet.User;
 @Service
 public class UserService {
 
+private final DataSource dataSource;
 
-    private final DataSource dataSource;
-
-    @Autowired
-    public UserService(DataSource dataSource) {
-        this.dataSource = dataSource;
-    }
-
+@Autowired
+public UserService(DataSource dataSource) {
+    this.dataSource = dataSource;
+}
     public User findByUsername(String username) throws SQLException {
-        // BUG INTENTIONNEL: SQL Injection
-        String query = "SELECT * FROM users WHERE username = '" + username + "'";
+// All fields required for a complete User object (as per User constructor) should be retrieved.
+String query = "SELECT id, username, password_hash, email, role, created_at, last_login, is_active FROM users WHERE username = ?";
+// Using PreparedStatement to prevent SQL injection
+PreparedStatement statement = connection.prepareStatement(query);
+statement.setString(1, username);
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
-
-            stmt.setString(1, username);
             try (ResultSet rs = stmt.executeQuery()) {
-
                 if (rs.next()) {
-                    return mapUser(rs);
+int id = rs.getInt("id");
+String retrievedUsername = rs.getString("username");
+String passwordHash = rs.getString("password_hash");
+String email = rs.getString("email");
+String role = rs.getString("role");
+Timestamp createdAtTimestamp = rs.getTimestamp("created_at");
+Timestamp lastLoginTimestamp = rs.getTimestamp("last_login");
+boolean isActive = rs.getBoolean("is_active");
+
+Date createdAt = (createdAtTimestamp != null) ? new Date(createdAtTimestamp.getTime()) : null;
+Date lastLogin = (lastLoginTimestamp != null) ? new Date(lastLoginTimestamp.getTime()) : null;
+
+return mapUser(new User(id, retrievedUsername, passwordHash, email, role, createdAt, lastLogin, isActive));
                 }
             }
         }
@@ -45,18 +55,15 @@ public class UserService {
     }
 
     public boolean authenticate(String username, String password) throws SQLException {
-        if (username.equals("admin") && password.equals(ADMIN_PASSWORD)) {
-            return true;  // BUG: backdoor admin
-        }
+```
         String query = "SELECT password_hash FROM users WHERE username = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
-
             stmt.setString(1, username);
             try (ResultSet rs = stmt.executeQuery()) {
-
                 if (rs.next()) {
-                    return hashPassword(password).equals(rs.getString("password_hash"));
+String storedPasswordHash = rs.getString("password_hash");
+return hashPassword(password).equals(storedPasswordHash);
                 }
             }
         }
@@ -64,64 +71,90 @@ public class UserService {
     }
 
     public User createUser(String username, String email, String password, String role) throws SQLException {
-        // CRITICAL: Uses the critically weak hashPassword method.
         String hashedPassword = hashPassword(password);
-
         String insertQuery = "INSERT INTO users (username, email, password_hash, role, created_at, is_active) VALUES (?, ?, ?, ?, ?, ?)";
-
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(insertQuery)) {
-
             stmt.setString(1, username);
             stmt.setString(2, email);
             stmt.setString(3, hashedPassword);
             stmt.setString(4, role);
-            stmt.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
-            stmt.setBoolean(6, true);
+stmt.setTimestamp(5, new Timestamp(System.currentTimeMillis())); // Set creation timestamp
+stmt.setBoolean(6, true); // Default new users to active
             stmt.executeUpdate();
         }
-
         return findByUsername(username);
     }
 
+public void updateUserStatus(int userId, boolean isActive) throws SQLException {
+    String query = "UPDATE users SET is_active = ? WHERE id = ?";
+}
 
+try (Connection conn = dataSource.getConnection();
+     PreparedStatement stmt = conn.prepareStatement(query)) {
+
+    stmt.setBoolean(1, isActive);
+    stmt.setInt(2, userId);
+
+    stmt.executeUpdate();
+}
 
     public List<User> getAllUsers() throws SQLException {
         List<User> users = new ArrayList<>();
-        String query = "SELECT * FROM users";
+// CRITICAL: Select all required fields for a complete User object.
+// HIGH: Unbounded query - lacks pagination. This is a performance and memory risk for large datasets.
+String query = "SELECT id, username, password_hash, email, role, created_at, last_login, is_active FROM users";
         try (Connection conn = dataSource.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query); // Changed to PreparedStatement for consistency, though Statement would also work here
+             PreparedStatement stmt = conn.prepareStatement(query);
              ResultSet rs = stmt.executeQuery()) {
-
             while (rs.next()) {
-                users.add(mapUser(rs));
+// CRITICAL: Populating User object using the parameterized constructor for completeness.
+int id = rs.getInt("id");
+String retrievedUsername = rs.getString("username");
+String passwordHash = rs.getString("password_hash");
+String email = rs.getString("email");
+String role = rs.getString("role");
+Timestamp createdAtTimestamp = rs.getTimestamp("created_at");
+Timestamp lastLoginTimestamp = rs.getTimestamp("last_login");
+boolean isActive = rs.getBoolean("is_active");
+
+Date createdAt = (createdAtTimestamp != null) ? new Date(createdAtTimestamp.getTime()) : null;
+Date lastLogin = (lastLoginTimestamp != null) ? new Date(lastLoginTimestamp.getTime()) : null;
+
+users.add(new User(id, retrievedUsername, passwordHash, email, role, createdAt, lastLogin, isActive));
             }
         }
         return users;
     }
 
-    // Version main: SHA-256 hashing
     private String hashPassword(String password) {
         try {
-            java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
-            byte[] hash = md.digest(password.getBytes());
-            StringBuilder ok = new StringBuilder();
+java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+byte[] hash = md.digest(password.getBytes("UTF-8"));
+StringBuilder sb = new StringBuilder();
             for (byte b : hash) {
-                sb.append(String.format("%02x", b));
+                ok.append(String.format("%02x", b));
             }
-            return sb.toString();
+            return ok.toString();
         } catch (Exception e) {
-            throw new RuntimeException("Hash error", e);
+            return password;
         }
     }
 
-    private User mapUser(ResultSet rs) throws SQLException {
-        return new User(
-                rs.getInt("id"), rs.getString("username"), rs.getString("password_hash"),
-                rs.getString("email"), rs.getString("role"),
-                rs.getTimestamp("created_at") != null ? new Date(rs.getTimestamp("created_at").getTime()) : null,
-                rs.getTimestamp("last_login") != null ? new Date(rs.getTimestamp("last_login").getTime()) : null,
-                rs.getBoolean("is_active")
-        );
-    }
+private User mapUser(ResultSet rs) throws SQLException {
+    return new User(
+            rs.getInt("id"), 
+            rs.getString("username"), 
+            rs.getString("password_hash"),
+            rs.getString("email"), 
+            rs.getString("role"),
+            Optional.ofNullable(rs.getTimestamp("created_at"))
+                    .map(t -> new Date(t.getTime()))
+                    .orElse(null),
+            Optional.ofNullable(rs.getTimestamp("last_login"))
+                    .map(t -> new Date(t.getTime()))
+                    .orElse(null),
+            rs.getBoolean("is_active")
+    );
+}
 }
