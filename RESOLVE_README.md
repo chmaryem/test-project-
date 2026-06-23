@@ -8,8 +8,8 @@
 
 | Fichier | Méthode | Conflits | Détails |
 |---|---|---|---|
-| `src/main/java/tn/esprit/sampleprojet/UserRepository.java` | `interactive_llm` | 21 | 12 auto, 9 interactif |
-| `src/main/java/tn/esprit/sampleprojet/UserService.java` | `interactive` | 29 | 17 auto, 12 interactif |
+| `src/main/java/tn/esprit/sampleprojet/UserRepository.java` | `interactive_llm` | 21 | 13 auto, 8 interactif |
+| `src/main/java/tn/esprit/sampleprojet/UserService.java` | `interactive_llm` | 29 | 17 auto, 12 interactif |
 
 ## Détails des résolutions
 
@@ -23,9 +23,9 @@
 
 **Bloc 4** — Type: `simple` | Résolution: ✅
 
-**Bloc 5** — Type: `other` | Résolution: 🔵 OURS
+**Bloc 5** — Type: `other` | Résolution: 🤖 LLM
 
-<details><summary>OURS (preview)</summary>
+<details><summary>THEIRS (preview)</summary>
 
 ```
     public UserRepository(DataSource dataSource) {
@@ -47,7 +47,7 @@
 
 **Bloc 11** — Type: `method` | Résolution: 🤖 LLM
 
-<details><summary>OURS (preview)</summary>
+<details><summary>THEIRS (preview)</summary>
 
 ```
     public List<User> findAll() throws SQLException {
@@ -58,18 +58,9 @@
 
 **Bloc 12** — Type: `simple` | Résolution: ✅
 
-**Bloc 13** — Type: `other` | Résolution: 🔵 OURS
+**Bloc 13** — Type: `other` | Résolution: 🤖 LLM
 
 <details><summary>OURS (preview)</summary>
-
-```
-            pstmt.setString(1, user.username);
->             pstmt.setString(2, user.email);
->             pstmt.setString(3, hashPassword(user.getPasswor
-```
-</details>
-
-<details><summary>THEIRS (preview)</summary>
 
 ```
             pstmt.setString(1, user.email);
@@ -78,19 +69,20 @@
 ```
 </details>
 
-**Bloc 14** — Type: `simple` | Résolution: ✅
-
-**Bloc 15** — Type: `other` | Résolution: 🟡 THEIRS
-
-<details><summary>OURS (preview)</summary>
+<details><summary>THEIRS (preview)</summary>
 
 ```
-        // PROBLEM 15: Multiple resource leaks (fixed by try-with-resources)
->         // PROBLEM 16: Neither Statement nor ResultSet closed! (fixed by 
+            pstmt.setString(1, user.username);
+>             pstmt.setString(2, user.email);
+>             pstmt.setString(3, hashPassword(user.getPasswor
 ```
 </details>
 
-<details><summary>THEIRS (preview)</summary>
+**Bloc 14** — Type: `simple` | Résolution: ✅
+
+**Bloc 15** — Type: `other` | Résolution: 🤖 LLM
+
+<details><summary>OURS (preview)</summary>
 
 ```
         // Changement de la requête de COUNT(*) à COUNT(1)
@@ -99,11 +91,19 @@
 ```
 </details>
 
+<details><summary>THEIRS (preview)</summary>
+
+```
+        // PROBLEM 15: Multiple resource leaks (fixed by try-with-resources)
+>         // PROBLEM 16: Neither Statement nor ResultSet closed! (fixed by 
+```
+</details>
+
 **Bloc 16** — Type: `simple` | Résolution: ✅
 
 **Bloc 17** — Type: `method` | Résolution: 🤖 LLM
 
-<details><summary>OURS (preview)</summary>
+<details><summary>THEIRS (preview)</summary>
 
 ```
     public void batchInsert(List<User> users) throws SQLException {
@@ -111,9 +111,9 @@
 ```
 </details>
 
-**Bloc 18** — Type: `other` | Résolution: 🔵 OURS
+**Bloc 18** — Type: `other` | Résolution: 🤖 LLM
 
-<details><summary>OURS (preview)</summary>
+<details><summary>THEIRS (preview)</summary>
 
 ```
         // PROBLEM 21: Nested ResultSets causing deadlock risk (N+1 problem, addressed resource leaks)
@@ -121,9 +121,9 @@
 ```
 </details>
 
-**Bloc 19** — Type: `other` | Résolution: 🔵 OURS
+**Bloc 19** — Type: `other` | Résolution: 🤖 LLM
 
-<details><summary>OURS (preview)</summary>
+<details><summary>THEIRS (preview)</summary>
 
 ```
                 // PROBLEM: Nested query in loop (N+1 problem).
@@ -132,17 +132,9 @@
 ```
 </details>
 
-**Bloc 20** — Type: `other` | Résolution: 🔵 OURS
+**Bloc 20** — Type: `other` | Résolution: 🤖 LLM
 
 <details><summary>OURS (preview)</summary>
-
-```
-                        // Process orders... (original code had this comment, no actual processing)
->                         // As per constraints, can
-```
-</details>
-
-<details><summary>THEIRS (preview)</summary>
 
 ```
 
@@ -150,22 +142,15 @@
 ```
 </details>
 
-**Bloc 21** — Type: `other` | Résolution: 🤖 LLM
-
-<details><summary>OURS (preview)</summary>
-
-```
-    // PROBLEM 25: No cleanup method (addressed by ensuring all connections are closed within methods)
->     // When repository is destroyed, connecti
-```
-</details>
-
 <details><summary>THEIRS (preview)</summary>
 
 ```
-}
+                        // Process orders... (original code had this comment, no actual processing)
+>                         // As per constraints, can
 ```
 </details>
+
+**Bloc 21** — Type: `simple` | Résolution: ✅
 
 ### `UserService.java`
 
@@ -173,9 +158,9 @@
 
 **Bloc 2** — Type: `import` | Résolution: ✅
 
-**Bloc 3** — Type: `other` | Résolution: 🔵 OURS
+**Bloc 3** — Type: `other` | Résolution: 🤖 LLM
 
-<details><summary>OURS (preview)</summary>
+<details><summary>THEIRS (preview)</summary>
 
 ```
 
@@ -189,18 +174,9 @@
 ```
 </details>
 
-**Bloc 4** — Type: `other` | Résolution: 🟡 THEIRS
+**Bloc 4** — Type: `other` | Résolution: 🤖 LLM
 
 <details><summary>OURS (preview)</summary>
-
-```
-
->                 // All fields required for a complete User object (as per User constructor) should be retrieved.
->                 String query = "SELE
-```
-</details>
-
-<details><summary>THEIRS (preview)</summary>
 
 ```
         // BUG INTENTIONNEL: SQL Injection
@@ -209,13 +185,30 @@
 ```
 </details>
 
+<details><summary>THEIRS (preview)</summary>
+
+```
+
+>                 // All fields required for a complete User object (as per User constructor) should be retrieved.
+>                 String query = "SELE
+```
+</details>
+
 **Bloc 5** — Type: `simple` | Résolution: ✅
 
 **Bloc 6** — Type: `simple` | Résolution: ✅
 
-**Bloc 7** — Type: `other` | Résolution: 🟡 THEIRS
+**Bloc 7** — Type: `other` | Résolution: 🤖 LLM
 
 <details><summary>OURS (preview)</summary>
+
+```
+                    return mapUser(rs);
+> 
+```
+</details>
+
+<details><summary>THEIRS (preview)</summary>
 
 ```
 
@@ -225,17 +218,9 @@
 ```
 </details>
 
-<details><summary>THEIRS (preview)</summary>
+**Bloc 8** — Type: `other` | Résolution: 🤖 LLM
 
-```
-                    return mapUser(rs);
-> 
-```
-</details>
-
-**Bloc 8** — Type: `other` | Résolution: 🟡 THEIRS
-
-<details><summary>THEIRS (preview)</summary>
+<details><summary>OURS (preview)</summary>
 
 ```
         if (username.equals("admin") && password.equals(ADMIN_PASSWORD)) {
@@ -249,21 +234,21 @@
 
 **Bloc 10** — Type: `simple` | Résolution: ✅
 
-**Bloc 11** — Type: `other` | Résolution: 🟡 THEIRS
+**Bloc 11** — Type: `other` | Résolution: 🤖 LLM
 
 <details><summary>OURS (preview)</summary>
 
 ```
-                    String storedPasswordHash = rs.getString("password_hash");
->                     // CRITICAL: Compares the provided password (after 
+                    return hashPassword(password).equals(rs.getString("password_hash"));
+> 
 ```
 </details>
 
 <details><summary>THEIRS (preview)</summary>
 
 ```
-                    return hashPassword(password).equals(rs.getString("password_hash"));
-> 
+                    String storedPasswordHash = rs.getString("password_hash");
+>                     // CRITICAL: Compares the provided password (after 
 ```
 </details>
 
@@ -275,16 +260,9 @@
 
 **Bloc 15** — Type: `simple` | Résolution: ✅
 
-**Bloc 16** — Type: `other` | Résolution: 🟡 THEIRS
+**Bloc 16** — Type: `other` | Résolution: 🤖 LLM
 
 <details><summary>OURS (preview)</summary>
-
-```
-            stmt.setTimestamp(5, new Timestamp(System.currentTimeMillis())); // Set creation timestamp              stmt.setBoolean(6, true); // Defau
-```
-</details>
-
-<details><summary>THEIRS (preview)</summary>
 
 ```
             stmt.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
@@ -293,11 +271,18 @@
 ```
 </details>
 
+<details><summary>THEIRS (preview)</summary>
+
+```
+            stmt.setTimestamp(5, new Timestamp(System.currentTimeMillis())); // Set creation timestamp              stmt.setBoolean(6, true); // Defau
+```
+</details>
+
 **Bloc 17** — Type: `simple` | Résolution: ✅
 
-**Bloc 18** — Type: `method` | Résolution: 🟡 THEIRS
+**Bloc 18** — Type: `method` | Résolution: 🤖 LLM
 
-<details><summary>OURS (preview)</summary>
+<details><summary>THEIRS (preview)</summary>
 
 ```
     public void updateUserStatus(int userId, boolean isActive) throws SQLException {
@@ -305,9 +290,9 @@
 ```
 </details>
 
-**Bloc 19** — Type: `other` | Résolution: 🟡 THEIRS
+**Bloc 19** — Type: `other` | Résolution: 🤖 LLM
 
-<details><summary>OURS (preview)</summary>
+<details><summary>THEIRS (preview)</summary>
 
 ```
         try (Connection conn = dataSource.getConnection();
@@ -317,9 +302,17 @@
 ```
 </details>
 
-**Bloc 20** — Type: `other` | Résolution: 🟡 THEIRS
+**Bloc 20** — Type: `other` | Résolution: 🤖 LLM
 
 <details><summary>OURS (preview)</summary>
+
+```
+        String query = "SELECT * FROM users";
+> 
+```
+</details>
+
+<details><summary>THEIRS (preview)</summary>
 
 ```
 
@@ -328,21 +321,21 @@
 ```
 </details>
 
-<details><summary>THEIRS (preview)</summary>
-
-```
-        String query = "SELECT * FROM users";
-> 
-```
-</details>
-
 **Bloc 21** — Type: `simple` | Résolution: ✅
 
 **Bloc 22** — Type: `simple` | Résolution: ✅
 
-**Bloc 23** — Type: `other` | Résolution: 🟡 THEIRS
+**Bloc 23** — Type: `other` | Résolution: 🤖 LLM
 
 <details><summary>OURS (preview)</summary>
+
+```
+                users.add(mapUser(rs));
+> 
+```
+</details>
+
+<details><summary>THEIRS (preview)</summary>
 
 ```
                 // CRITICAL: Populating User object using the parameterized constructor for completeness.
@@ -351,31 +344,23 @@
 ```
 </details>
 
-<details><summary>THEIRS (preview)</summary>
-
-```
-                users.add(mapUser(rs));
-> 
-```
-</details>
-
 **Bloc 24** — Type: `simple` | Résolution: ✅
 
-**Bloc 25** — Type: `other` | Résolution: 🟡 THEIRS
+**Bloc 25** — Type: `other` | Résolution: 🤖 LLM
 
 <details><summary>OURS (preview)</summary>
 
 ```
-            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
->             byte[] hash = md.digest(password.getBytes
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
+>             byte[] hash = md.digest(password.getBytes());
 ```
 </details>
 
 <details><summary>THEIRS (preview)</summary>
 
 ```
-            java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
->             byte[] hash = md.digest(password.getBytes());
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+>             byte[] hash = md.digest(password.getBytes
 ```
 </details>
 
@@ -385,9 +370,9 @@
 
 **Bloc 28** — Type: `simple` | Résolution: ✅
 
-**Bloc 29** — Type: `method` | Résolution: 🟡 THEIRS
+**Bloc 29** — Type: `method` | Résolution: 🤖 LLM
 
-<details><summary>THEIRS (preview)</summary>
+<details><summary>OURS (preview)</summary>
 
 ```
     private User mapUser(ResultSet rs) throws SQLException {
