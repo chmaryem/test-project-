@@ -73,12 +73,8 @@ pstmt.setString(3, hashPassword(user.getPasswordHash()));
     }
 
     public int countUsers() throws SQLException {
-// Changement de la requête de COUNT(*) à COUNT(1) et sécurisation des ressources
-String sql = "SELECT COUNT(1) AS total_count FROM users";
-// Utilisation de try-with-resources pour éviter les leaks de ressources
-try (Statement statement = connection.createStatement(); ResultSet resultSet = statement.executeQuery(sql)) {
-    // Traitement du résultat
-}
+// Changement de la requête de COUNT(*) à COUNT(1) & SECURITE 
+String sql = "SELECT COUNT(1) AS total FROM users";
         try (Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -128,10 +124,10 @@ public void batchInsert(List<User> users) throws SQLException {
 }
     public List<User> getUsersWithOrders() throws SQLException {
         List<User> users = new ArrayList<>();
-// PROBLEM 21: Nested ResultSets causing deadlock risk (N+1 problem, addressed resource leaks)
-// PROBLEM 22: Nested query in loop (N+1 problem) (not fully fixed due to signature constraint, but resources managed)
-// PROBLEM 23: Inner statement and resultset never closed! (fixed by try-with-resources)
-// PROBLEM 24: Outer statement and resultset never closed! (fixed by try-with-resources)
+        // PROBLEM 21: Nested ResultSets causing deadlock risk (N+1 problem, addressed resource leaks)
+        // PROBLEM 22: Nested query in loop (N+1 problem) (not fully fixed due to signature constraint, but resources managed)
+        // PROBLEM 23: Inner statement and resultset never closed! (fixed by try-with-resources)
+        // PROBLEM 24: Outer statement and resultset never closed! (fixed by try-with-resources)
         String selectUsersSql = "SELECT id, username, email FROM users";
         try (Connection conn = dataSource.getConnection();
              Statement stmt1 = conn.createStatement();
