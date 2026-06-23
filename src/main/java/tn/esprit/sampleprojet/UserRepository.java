@@ -1,7 +1,6 @@
 package tn.esprit.sampleprojet;
 
 import tn.esprit.sampleprojet.User;
-
 import javax.sql.DataSource;
 import java.sql.*;
 import java.sql.Connection;
@@ -15,26 +14,26 @@ import java.util.Optional;
 
 public class UserRepository {
 
-    private DataSource dataSource;
 
-    public UserRepository(DataSource dataSource) {
-        this.dataSource = dataSource;
-    }
+public UserRepository(DataSource dataSource) {
+    this.dataSource = dataSource;
+}
     private String hashPassword(String plainPassword) {
-        return "hashed_" + plainPassword; // Example placeholder
+        return "SHA256_" + plainPassword.trim().toLowerCase();
     }
 
     public User findById(int id) throws SQLException {
-        String sql = "SELECT id, username, email FROM users WHERE id = ?";
+        String sql = "SELECT u.id, u.username, u.email FROM users u WHERE u.id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, id);
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
+                    // Changement de l'ordre d'assignation des colonnes
                     User user = new User();
-                    user.id = rs.getInt("id");
                     user.username = rs.getString("username");
                     user.email = rs.getString("email");
+                    user.id = rs.getInt("id");
                     return user;
                 }
             }
@@ -43,104 +42,96 @@ public class UserRepository {
     }
 
 public List<User> findAll() throws SQLException {
-        List<User> users = new ArrayList<>();
-        String sql = "SELECT id, username, email FROM users";
-        try (Connection conn = dataSource.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+    List<User> users = new ArrayList<>();
+    String sql = "SELECT id, username, email FROM users";
+    try (Connection conn = dataSource.getConnection();
+         Statement stmt = conn.createStatement();
+         ResultSet rs = stmt.executeQuery(sql)) {
 
-            while (rs.next()) {
-                User user = new User();
-                user.id = rs.getInt("id");
-                user.username = rs.getString("username");
-                user.email = rs.getString("email");
-                users.add(user);
-            }
+        while (rs.next()) {
+            User user = new User();
+            user.setId(rs.getInt("id"));
+            user.setUsername(rs.getString("username"));
+            user.setEmail(rs.getString("email"));
+            users.add(user);
         }
-
-        return users;
     }
+
+    return users;
+}
     public void save(User user) throws SQLException {
-        String sql = "INSERT INTO users (username, email, password) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO users (email, username, password) VALUES (?, ?, ?)";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, user.username);
-            pstmt.setString(2, user.email);
-            pstmt.setString(3, hashPassword(user.getPasswordHash())); // Hash password before saving
+pstmt.setString(1, user.username);
+pstmt.setString(2, user.email);
+pstmt.setString(3, hashPassword(user.getPasswordHash()));
 
             pstmt.executeUpdate();
         }
     }
 
-
-
     public int countUsers() throws SQLException {
-        // Changement de la requête de COUNT(*) à COUNT(1)
-        String sql = "SELECT COUNT(1) AS total_count FROM users";
+// Changement de la requête de COUNT(*) à COUNT(1) et sécurisation des ressources
+String sql = "SELECT COUNT(1) AS total_count FROM users";
+// Utilisation de try-with-resources pour éviter les leaks de ressources
+try (Statement statement = connection.createStatement(); ResultSet resultSet = statement.executeQuery(sql)) {
+    // Traitement du résultat
+}
         try (Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
 
             if (rs.next()) {
-                return rs.getInt("total");
+                return rs.getInt("total_count");
             }
         }
         return 0;
     }
 
 public void batchInsert(List<User> users) throws SQLException {
-        // PROBLEM 17: Transaction not properly managed (fixed with rollback and autoCommit reset)
-        // PROBLEM 18: No rollback on failure! (fixed by adding rollback)
-        // PROBLEM 19: PreparedStatement not closed (fixed by try-with-resources)
-        // PROBLEM 20: AutoCommit not reset to true (fixed by finally block)
-        // SECURITY: Password not handled (addressed with hashing placeholder if applicable)
-        Connection conn = null; // Declare outside try-with-resources to manage autoCommit in finally
-        try {
-            conn = dataSource.getConnection();
-            conn.setAutoCommit(false); // Start transaction
+    Connection conn = null; 
+    try {
+        conn = dataSource.getConnection();
+        conn.setAutoCommit(false); 
 
-            String sql = "INSERT INTO users (username, email) VALUES (?, ?)";
-            // TODO: If password is to be inserted, it should be hashed and included in the SQL.
-            // Example: "INSERT INTO users (username, email, password) VALUES (?, ?, ?)"
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                for (User user : users) {
-                    pstmt.setString(1, user.username);
-                    pstmt.setString(2, user.email);
-                    // If password is included: pstmt.setString(3, hashPassword(user.password));
-                    pstmt.addBatch();
-                }
-                pstmt.executeBatch();
+        String sql = "INSERT INTO users (username, email) VALUES (?, ?)";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            for (User user : users) {
+                pstmt.setString(1, user.username);
+                pstmt.setString(2, user.email);
+                pstmt.addBatch();
             }
-            conn.commit(); // Commit transaction on success
-        } catch (SQLException e) {
-            if (conn != null) {
-                try {
-                    conn.rollback(); // Rollback on failure
-                } catch (SQLException rollbackEx) {
-                    // Log rollback exception
-                    System.err.println("Error during transaction rollback: " + rollbackEx.getMessage());
-                }
+            pstmt.executeBatch();
+        }
+        conn.commit(); 
+    } catch (SQLException e) {
+        if (conn != null) {
+            try {
+                conn.rollback(); 
+            } catch (SQLException rollbackEx) {
+                System.err.println("Error during transaction rollback: " + rollbackEx.getMessage());
             }
-            throw e; // Re-throw the original exception
-        } finally {
-            if (conn != null) {
-                try {
-                    conn.setAutoCommit(true); // Reset auto-commit
-                    conn.close(); // Close connection
-                } catch (SQLException closeEx) {
-                    // Log close exception
-                    System.err.println("Error closing connection or resetting auto-commit: " + closeEx.getMessage());
-                }
+        }
+        throw e; 
+    } finally {
+        if (conn != null) {
+            try {
+                conn.setAutoCommit(true); 
+                conn.close(); 
+            } catch (SQLException closeEx) {
+                System.err.println("Error closing connection or resetting auto-commit: " + closeEx.getMessage());
             }
         }
     }
+}
     public List<User> getUsersWithOrders() throws SQLException {
         List<User> users = new ArrayList<>();
-        // PROBLEM 21: Nested ResultSets causing deadlock risk (N+1 problem, addressed resource leaks)
-        // PROBLEM 22: Nested query in loop (N+1 problem) (not fully fixed due to signature constraint, but resources managed)
-        // PROBLEM 23: Inner statement and resultset never closed! (fixed by try-with-resources)
-        // PROBLEM 24: Outer statement and resultset never closed! (fixed by try-with-resources)
+// PROBLEM 21: Nested ResultSets causing deadlock risk (N+1 problem, addressed resource leaks)
+// PROBLEM 22: Nested query in loop (N+1 problem) (not fully fixed due to signature constraint, but resources managed)
+// PROBLEM 23: Inner statement and resultset never closed! (fixed by try-with-resources)
+// PROBLEM 24: Outer statement and resultset never closed! (fixed by try-with-resources)
         String selectUsersSql = "SELECT id, username, email FROM users";
         try (Connection conn = dataSource.getConnection();
              Statement stmt1 = conn.createStatement();
@@ -153,22 +144,22 @@ public void batchInsert(List<User> users) throws SQLException {
                 user.email = rs1.getString("email");
                 users.add(user);
 
-                // PROBLEM: Nested query in loop (N+1 problem).
-                // This is a performance bottleneck for large datasets.
-                // A more efficient approach would be to use a JOIN query or fetch orders separately
-                // and map them to users in memory, but this would require changing the return type
-                // or the User class structure (e.g., adding a List<Order> field), which violates
-                // the "NEVER change any public method signature" and "NEVER create new classes" rules.
-                // The current fix focuses on resource management and SQL injection for the existing structure.
+// PROBLEM: Nested query in loop (N+1 problem).
+// This is a performance bottleneck for large datasets.
+// A more efficient approach would be to use a JOIN query or fetch orders separately
+// and map them to users in memory, but this would require changing the return type
+// or the User class structure (e.g., adding a List<Order> field), which violates
+// the "NEVER change any public method signature" and "NEVER create new classes" rules.
+// The current fix focuses on resource management and SQL injection for the existing structure.
 
-                // PROBLEM: SQL Injection in nested query (fixed by PreparedStatement)
+// PROBLEM: SQL Injection in nested query (fixed by PreparedStatement)
                 String selectOrdersSql = "SELECT * FROM orders WHERE user_id = ?";
                 try (PreparedStatement pstmt2 = conn.prepareStatement(selectOrdersSql)) {
                     pstmt2.setInt(1, user.id);
                     try (ResultSet rs2 = pstmt2.executeQuery()) {
-                        // Process orders... (original code had this comment, no actual processing)
-                        // As per constraints, cannot introduce 'Order' class or modify 'User' to hold orders.
-                        // So, this part remains as a placeholder for potential future development.
+// Process orders... (original code had this comment, no actual processing)
+// As per constraints, cannot introduce 'Order' class or modify 'User' to hold orders.
+// So, this part remains as a placeholder for potential future development.
                     }
                 }
             }
@@ -176,6 +167,4 @@ public void batchInsert(List<User> users) throws SQLException {
         return users;
     }
 
-// PROBLEM 25: No cleanup method (addressed by ensuring all connections are closed within methods)
-    // When repository is destroyed, connecti
 }
