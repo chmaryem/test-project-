@@ -73,8 +73,9 @@ pstmt.setString(3, hashPassword(user.getPasswordHash()));
     }
 
     public int countUsers() throws SQLException {
-// Changement de la requête de COUNT(*) à COUNT(1) & SECURITE 
-String sql = "SELECT COUNT(1) AS total FROM users";
+// Changement de la requête de COUNT(*) à COUNT(1)
+// SECURITE : problème de fuite de ressource (try-with-resources)
+String sql = "SELECT COUNT(1) AS total_count FROM users";
         try (Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -147,7 +148,6 @@ public void batchInsert(List<User> users) throws SQLException {
 // or the User class structure (e.g., adding a List<Order> field), which violates
 // the "NEVER change any public method signature" and "NEVER create new classes" rules.
 // The current fix focuses on resource management and SQL injection for the existing structure.
-
 // PROBLEM: SQL Injection in nested query (fixed by PreparedStatement)
                 String selectOrdersSql = "SELECT * FROM orders WHERE user_id = ?";
                 try (PreparedStatement pstmt2 = conn.prepareStatement(selectOrdersSql)) {
