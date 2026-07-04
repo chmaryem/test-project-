@@ -28,7 +28,7 @@ public UserService(DataSource dataSource) {
     public User findByUsername(String username) throws SQLException {
 // All fields required for a complete User object (as per User constructor) should be retrieved.
 String query = "SELECT id, username, password_hash, email, role, created_at, last_login, is_active FROM users WHERE username = ?";
-// Parameterized query to prevent SQL injection
+// Prepare statement to prevent SQL Injection
 PreparedStatement statement = connection.prepareStatement(query);
 statement.setString(1, username);
         try (Connection conn = dataSource.getConnection();
@@ -101,7 +101,7 @@ try (Connection conn = dataSource.getConnection();
 
     public List<User> getAllUsers() throws SQLException {
         List<User> users = new ArrayList<>();
-// CRITICAL: The original query only selected id, username, leading to incomplete User objects.
+// CRITICAL: The original query only selected limited fields, leading to incomplete User objects.
 // All fields required for a complete User object (as per User constructor) should be retrieved.
 // HIGH: Unbounded query - lacks pagination. This is a performance and memory risk for large datasets.
 // Due to architectural rule "NEVER change any public method signature", pagination parameters cannot be added here.
