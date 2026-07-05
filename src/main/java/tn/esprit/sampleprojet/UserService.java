@@ -28,7 +28,7 @@ public UserService(DataSource dataSource) {
     public User findByUsername(String username) throws SQLException {
 // All fields required for a complete User object (as per User constructor) should be retrieved.
 String query = "SELECT id, username, password_hash, email, role, created_at, last_login, is_active FROM users WHERE username = ?";
-// Using PreparedStatement to prevent SQL Injection
+// Prevent SQL Injection by using PreparedStatement with parameterized query
 PreparedStatement statement = connection.prepareStatement(query);
 statement.setString(1, username);
         try (Connection conn = dataSource.getConnection();
