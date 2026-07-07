@@ -28,7 +28,7 @@ public UserService(DataSource dataSource) {
     public User findByUsername(String username) throws SQLException {
 // All fields required for a complete User object (as per User constructor) should be retrieved.
 String query = "SELECT id, username, password_hash, email, role, created_at, last_login, is_active FROM users WHERE username = ?";
-// Using prepared statement to prevent SQL injection
+// Use prepared statement to prevent SQL injection
 PreparedStatement statement = connection.prepareStatement(query);
 statement.setString(1, username);
         try (Connection conn = dataSource.getConnection();
@@ -63,8 +63,7 @@ return new User(id, retrievedUsername, passwordHash, email, role, createdAt, las
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
 String storedPasswordHash = rs.getString("password_hash");
-// Using secure comparison to prevent timing attacks
-return java.security.MessageDigest.isEqual(hashPassword(password).getBytes(), storedPasswordHash.getBytes());
+return hashPassword(password).equals(storedPasswordHash);
                 }
             }
         }
@@ -87,9 +86,9 @@ stmt.setBoolean(6, true); // Default new users to active
         return findByUsername(username);
     }
 
-    public void updateUserStatus(int userId, boolean isActive) throws SQLException {
-        String query = "UPDATE users SET is_active = ? WHERE id = ?";
-    }
+public void updateUserStatus(int userId, boolean isActive) throws SQLException {
+    String query = "UPDATE users SET is_active = ? WHERE id = ?";
+}
 
 try (Connection conn = dataSource.getConnection();
      PreparedStatement stmt = conn.prepareStatement(query)) {
