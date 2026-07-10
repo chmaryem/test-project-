@@ -44,7 +44,7 @@ boolean isActive = rs.getBoolean("is_active");
 Date createdAt = (createdAtTimestamp != null) ? new Date(createdAtTimestamp.getTime()) : null;
 Date lastLogin = (lastLoginTimestamp != null) ? new Date(lastLoginTimestamp.getTime()) : null;
 
-return mapUser(new User(id, retrievedUsername, passwordHash, email, role, createdAt, lastLogin, isActive));
+return new User(id, retrievedUsername, passwordHash, email, role, createdAt, lastLogin, isActive);
                 }
             }
         }
