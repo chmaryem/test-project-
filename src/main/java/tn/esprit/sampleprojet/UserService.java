@@ -28,6 +28,9 @@ public UserService(DataSource dataSource) {
     public User findByUsername(String username) throws SQLException {
 // All fields required for a complete User object (as per User constructor) should be retrieved.
 String query = "SELECT id, username, password_hash, email, role, created_at, last_login, is_active FROM users WHERE username = ?";
+// Prevent SQL injection by using a prepared statement with a parameter
+PreparedStatement statement = connection.prepareStatement(query);
+statement.setString(1, username);
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
             try (ResultSet rs = stmt.executeQuery()) {
@@ -44,7 +47,7 @@ boolean isActive = rs.getBoolean("is_active");
 Date createdAt = (createdAtTimestamp != null) ? new Date(createdAtTimestamp.getTime()) : null;
 Date lastLogin = (lastLoginTimestamp != null) ? new Date(lastLoginTimestamp.getTime()) : null;
 
-return new User(id, retrievedUsername, passwordHash, email, role, createdAt, lastLogin, isActive);
+return mapUser(new User(id, retrievedUsername, passwordHash, email, role, createdAt, lastLogin, isActive));
                 }
             }
         }
@@ -148,10 +151,10 @@ private User mapUser(ResultSet rs) throws SQLException {
             rs.getString("email"), 
             rs.getString("role"),
             Optional.ofNullable(rs.getTimestamp("created_at"))
-                    .map(t -> new Date(t.getTime()))
+                    .map(timestamp -> new Date(timestamp.getTime()))
                     .orElse(null),
             Optional.ofNullable(rs.getTimestamp("last_login"))
-                    .map(t -> new Date(t.getTime()))
+                    .map(timestamp -> new Date(timestamp.getTime()))
                     .orElse(null),
             rs.getBoolean("is_active")
     );
