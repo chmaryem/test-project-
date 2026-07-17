@@ -32,7 +32,8 @@ public class User {
     }
 
     public User() {
-
+        this.permissions = new ArrayList<>();
+        this.nonpermissions = new ArrayList<>();
     }
 
     // Getters for all private fields to maintain encapsulation
