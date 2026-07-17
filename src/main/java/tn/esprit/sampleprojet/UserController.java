@@ -11,22 +11,9 @@ import java.util.logging.Logger;
 @Controller
 public class UserController {
 
-    private static final Logger LOGGER = Logger.getLogger(UserController.class.getName()); // Declared missing LOGGER
 
 
-
-    @Autowired
-    public UserController(UserService userService) {
-        this.userService = userService;
-    }
-
-    public User login(String username, String password) {
-        if (username == null || username.trim().isEmpty()) {
-            throw new IllegalArgumentException("Username cannot be empty.");
-        }
-        if (password == null || password.isEmpty()) {
-            throw new IllegalArgumentException("Password cannot be empty.");
-        }
+       
 
         try {
 

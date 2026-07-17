@@ -12,28 +12,9 @@ import java.util.Base64;
 import javax.sql.DataSource;
 
 public class UserRepository {
-
-    private DataSource dataSource;
-
-    // Setter injection for DataSource
-    public void setDataSource(DataSource dataSource) {
-        this.dataSource = dataSource;
-    }
-
-    private String hashPassword(String plainPassword) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(plainPassword.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            return Base64.getEncoder().encodeToString(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("SHA-256 algorithm not available", e);
-        }
-    }
-
-    public Optional<User> findById(int id) throws SQLException {
-        if (id <= 0) {
-            throw new IllegalArgumentException("ID must be positive");
-        }
+  
+    
+   
         String sql = "SELECT u.id, u.username, u.email FROM users u WHERE u.id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -83,18 +64,7 @@ public class UserRepository {
         }
     }
 
-    public int countUsers() throws SQLException {
-        String sql = "SELECT COUNT(*) AS total_count FROM users";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql);
-             ResultSet rs = pstmt.executeQuery()) {
-
-            if (rs.next()) {
-                return rs.getInt("total_count");
-            }
-        }
-        return 0;
-    }
+    
 
     public List<User> getUsersWithOrders(int limit, int offset) throws SQLException {
         if (limit <= 0) {

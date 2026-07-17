@@ -2,7 +2,6 @@ package tn.esprit.sampleprojet;
 import java.util.Date;
 import java.util.List;
 import java.util.ArrayList;
-import jakarta.annotation.Nonnull;
 
 
 public class User {
@@ -32,7 +31,8 @@ public class User {
     }
 
     public User() {
-
+        this.permissions = new ArrayList<>();
+        this.nonpermissions = new ArrayList<>();
     }
 
     // Getters for all private fields to maintain encapsulation
@@ -91,7 +91,7 @@ public class User {
     }
 
     // 2. Permission Validation
-    public boolean hasPermission(@Nonnull String permission) {
+    public boolean hasPermission(String permission) {
         // `permissions` list is now guaranteed to be initialized in the constructor.
         return isActive && permissions.contains(permission) && !nonpermissions.contains(permission);
     }
