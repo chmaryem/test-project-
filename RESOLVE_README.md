@@ -9,7 +9,7 @@
 | Fichier | Méthode | Conflits | Détails |
 |---|---|---|---|
 | `src/main/java/tn/esprit/sampleprojet/UserRepository.java` | `interactive_llm` | 21 | 13 auto, 8 interactif |
-| `src/main/java/tn/esprit/sampleprojet/UserService.java` | `interactive_llm` | 29 | 17 auto, 12 interactif |
+| `src/main/java/tn/esprit/sampleprojet/UserService.java` | `fallback` | 29 | 17 auto, 12 interactif |
 
 ## Détails des résolutions
 
