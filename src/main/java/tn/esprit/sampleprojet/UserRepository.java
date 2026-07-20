@@ -50,9 +50,9 @@ public List<User> findAll() throws SQLException {
 
         while (rs.next()) {
             User user = new User();
-            user.setId(rs.getInt("id"));
-            user.setUsername(rs.getString("username"));
-            user.setEmail(rs.getString("email"));
+            user.id = rs.getInt("id");
+            user.username = rs.getString("username");
+            user.email = rs.getString("email");
             users.add(user);
         }
     }
@@ -64,16 +64,18 @@ public List<User> findAll() throws SQLException {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-pstmt.setString(1, user.username);
-pstmt.setString(2, user.email);
-pstmt.setString(3, hashPassword(user.getPasswordHash()));
+            pstmt.setString(1, user.username);
+            pstmt.setString(2, user.email);
+            pstmt.setString(3, hashPassword(user.getPasswordHash()));
 
             pstmt.executeUpdate();
         }
     }
 
     public int countUsers() throws SQLException {
-String sql = "SELECT COUNT(1) AS total_count FROM users";
+        // PROBLEM 15: Multiple resource leaks (fixed by try-with-resources)
+        // PROBLEM 16: Neither Statement nor ResultSet closed! (fixed by try-with-resources)
+        String sql = "SELECT COUNT(1) AS total_count FROM users";
         try (Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -86,35 +88,35 @@ String sql = "SELECT COUNT(1) AS total_count FROM users";
     }
 
 public void batchInsert(List<User> users) throws SQLException {
-    Connection conn = null; 
+    Connection conn = null;
     try {
         conn = dataSource.getConnection();
-        conn.setAutoCommit(false); 
+        conn.setAutoCommit(false);
 
         String sql = "INSERT INTO users (username, email) VALUES (?, ?)";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             for (User user : users) {
-                pstmt.setString(1, user.username);
-                pstmt.setString(2, user.email);
+                pstmt.setString(1, user.getUsername());
+                pstmt.setString(2, user.getEmail());
                 pstmt.addBatch();
             }
             pstmt.executeBatch();
         }
-        conn.commit(); 
+        conn.commit();
     } catch (SQLException e) {
         if (conn != null) {
             try {
-                conn.rollback(); 
+                conn.rollback();
             } catch (SQLException rollbackEx) {
                 System.err.println("Error during transaction rollback: " + rollbackEx.getMessage());
             }
         }
-        throw e; 
+        throw e;
     } finally {
         if (conn != null) {
             try {
-                conn.setAutoCommit(true); 
-                conn.close(); 
+                conn.setAutoCommit(true);
+                conn.close();
             } catch (SQLException closeEx) {
                 System.err.println("Error closing connection or resetting auto-commit: " + closeEx.getMessage());
             }
@@ -123,10 +125,7 @@ public void batchInsert(List<User> users) throws SQLException {
 }
     public List<User> getUsersWithOrders() throws SQLException {
         List<User> users = new ArrayList<>();
-        // PROBLEM 21: Nested ResultSets causing deadlock risk (N+1 problem, addressed resource leaks)
-        // PROBLEM 22: Nested query in loop (N+1 problem) (not fully fixed due to signature constraint, but resources managed)
-        // PROBLEM 23: Inner statement and resultset never closed! (fixed by try-with-resources)
-        // PROBLEM 24: Outer statement and resultset never closed! (fixed by try-with-resources)
+```
         String selectUsersSql = "SELECT id, username, email FROM users";
         try (Connection conn = dataSource.getConnection();
              Statement stmt1 = conn.createStatement();
