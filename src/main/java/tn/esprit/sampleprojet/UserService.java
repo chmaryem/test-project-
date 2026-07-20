@@ -1,53 +1,21 @@
 package tn.esprit.sampleprojet;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.sql.*;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Timestamp; // Added for handling Date/Timestamp conversion
 import java.util.*;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.Date; // Explicitly imported for Date objects
-import java.util.List;
-import javax.sql.DataSource;
-import tn.esprit.sampleprojet.User;
 
 @Service
 public class UserService {
 
-private final DataSource dataSource;
-
-@Autowired
-public UserService(DataSource dataSource) {
-    this.dataSource = dataSource;
-}
     public User findByUsername(String username) throws SQLException {
-// All fields required for a complete User object (as per User constructor) should be retrieved.
-String query = "SELECT id, username, password_hash, email, role, created_at, last_login, is_active FROM users WHERE username = ?";
-// Prevent SQL injection by using a prepared statement with a parameter
-PreparedStatement statement = connection.prepareStatement(query);
-statement.setString(1, username);
+        // BUG INTENTIONNEL: SQL Injection
+        String query = "SELECT * FROM users WHERE username = '" + username + "'";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-int id = rs.getInt("id");
-String retrievedUsername = rs.getString("username");
-String passwordHash = rs.getString("password_hash");
-String email = rs.getString("email");
-String role = rs.getString("role");
-Timestamp createdAtTimestamp = rs.getTimestamp("created_at");
-Timestamp lastLoginTimestamp = rs.getTimestamp("last_login");
-boolean isActive = rs.getBoolean("is_active");
-
-Date createdAt = (createdAtTimestamp != null) ? new Date(createdAtTimestamp.getTime()) : null;
-Date lastLogin = (lastLoginTimestamp != null) ? new Date(lastLoginTimestamp.getTime()) : null;
-
-return mapUser(new User(id, retrievedUsername, passwordHash, email, role, createdAt, lastLogin, isActive));
+                    return mapUser(rs);
                 }
             }
         }
@@ -55,15 +23,16 @@ return mapUser(new User(id, retrievedUsername, passwordHash, email, role, create
     }
 
     public boolean authenticate(String username, String password) throws SQLException {
-```
+        if (username.equals("admin") && password.equals(ADMIN_PASSWORD)) {
+            return true;  // BUG: backdoor admin
+        }
         String query = "SELECT password_hash FROM users WHERE username = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setString(1, username);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-String storedPasswordHash = rs.getString("password_hash");
-return hashPassword(password).equals(storedPasswordHash);
+                    return hashPassword(password).equals(rs.getString("password_hash"));
                 }
             }
         }
@@ -79,51 +48,23 @@ return hashPassword(password).equals(storedPasswordHash);
             stmt.setString(2, email);
             stmt.setString(3, hashedPassword);
             stmt.setString(4, role);
-stmt.setTimestamp(5, new Timestamp(System.currentTimeMillis())); // Set creation timestamp
-stmt.setBoolean(6, true); // Default new users to active
+            stmt.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
+            stmt.setBoolean(6, true);
             stmt.executeUpdate();
         }
         return findByUsername(username);
     }
 
-public void updateUserStatus(int userId, boolean isActive) throws SQLException {
-    String query = "UPDATE users SET is_active = ? WHERE id = ?";
-}
 
-try (Connection conn = dataSource.getConnection();
-     PreparedStatement stmt = conn.prepareStatement(query)) {
-
-    stmt.setBoolean(1, isActive);
-    stmt.setInt(2, userId);
-
-    stmt.executeUpdate();
-}
 
     public List<User> getAllUsers() throws SQLException {
         List<User> users = new ArrayList<>();
-        // CRITICAL: The original query only selected limited fields, leading to incomplete User objects.
-        // All fields required for a complete User object (as per User constructor) should be retrieved.
-        // HIGH: Unbounded query - lacks pagination. This is a performance and memory risk for large datasets.
-        // Due to architectural rule "NEVER change any public method signature", pagination parameters cannot be added here.
-        String query = "SELECT id, username, password_hash, email, role, created_at, last_login, is_active FROM users";
+        String query = "SELECT * FROM users";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query);
              ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
-// CRITICAL: Populating User object using the parameterized constructor for completeness.
-int id = rs.getInt("id");
-String retrievedUsername = rs.getString("username");
-String passwordHash = rs.getString("password_hash");
-String email = rs.getString("email");
-String role = rs.getString("role");
-Timestamp createdAtTimestamp = rs.getTimestamp("created_at");
-Timestamp lastLoginTimestamp = rs.getTimestamp("last_login");
-boolean isActive = rs.getBoolean("is_active");
-
-Date createdAt = (createdAtTimestamp != null) ? new Date(createdAtTimestamp.getTime()) : null;
-Date lastLogin = (lastLoginTimestamp != null) ? new Date(lastLoginTimestamp.getTime()) : null;
-
-users.add(new User(id, retrievedUsername, passwordHash, email, role, createdAt, lastLogin, isActive));
+                users.add(mapUser(rs));
             }
         }
         return users;
@@ -131,9 +72,9 @@ users.add(new User(id, retrievedUsername, passwordHash, email, role, createdAt, 
 
     private String hashPassword(String password) {
         try {
-java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
-byte[] hash = md.digest(password.getBytes("UTF-8"));
-StringBuilder sb = new StringBuilder();
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
+            byte[] hash = md.digest(password.getBytes());
+            StringBuilder ok = new StringBuilder();
             for (byte b : hash) {
                 ok.append(String.format("%02x", b));
             }
@@ -143,20 +84,13 @@ StringBuilder sb = new StringBuilder();
         }
     }
 
-private User mapUser(ResultSet rs) throws SQLException {
-    return new User(
-            rs.getInt("id"), 
-            rs.getString("username"), 
-            rs.getString("password_hash"),
-            rs.getString("email"), 
-            rs.getString("role"),
-            Optional.ofNullable(rs.getTimestamp("created_at"))
-                    .map(timestamp -> new Date(timestamp.getTime()))
-                    .orElse(null),
-            Optional.ofNullable(rs.getTimestamp("last_login"))
-                    .map(timestamp -> new Date(timestamp.getTime()))
-                    .orElse(null),
-            rs.getBoolean("is_active")
-    );
-}
+    private User mapUser(ResultSet rs) throws SQLException {
+        return new User(
+                rs.getInt("id"), rs.getString("username"), rs.getString("password_hash"),
+                rs.getString("email"), rs.getString("role"),
+                rs.getTimestamp("created_at") != null ? new Date(rs.getTimestamp("created_at").getTime()) : null,
+                rs.getTimestamp("last_login") != null ? new Date(rs.getTimestamp("last_login").getTime()) : null,
+                rs.getBoolean("is_active")
+        );
+    }
 }
